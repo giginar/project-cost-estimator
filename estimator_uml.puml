@@ -1,0 +1,402 @@
+@startuml
+
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+hide empty methods
+
+title Construction Cost Estimator - Domain Model
+
+' =====================================================
+' PROJECT STRUCTURE
+' =====================================================
+
+class Project {
+    +UUID id
+    +String code
+    +String name
+    +String description
+    +LocalDate plannedStartDate
+    +LocalDate plannedEndDate
+    +Currency currency
+    +ProjectStatus status
+}
+
+class EstimateVersion {
+    +UUID id
+    +String name
+    +String description
+    +int versionNumber
+    +EstimateStatus status
+    +LocalDateTime createdAt
+    +LocalDateTime approvedAt
+}
+
+class WbsItem {
+    +UUID id
+    +String code
+    +String name
+    +String description
+    +int sequence
+}
+
+class Activity {
+    +UUID id
+    +String code
+    +String name
+    +String description
+    +ActivityType type
+    +BigDecimal plannedQuantity
+    +UnitOfMeasure quantityUnit
+    +BigDecimal plannedDuration
+    +DurationUnit durationUnit
+    +LocalDate plannedStartDate
+    +LocalDate plannedEndDate
+}
+
+Project "1" *-- "1..*" EstimateVersion
+EstimateVersion "1" *-- "1..*" WbsItem
+WbsItem "0..1" <-- "0..*" WbsItem : parent
+WbsItem "1" *-- "0..*" Activity
+
+' =====================================================
+' RESOURCE CATALOG
+' =====================================================
+
+abstract class Resource {
+    +UUID id
+    +String code
+    +String name
+    +String description
+    +ResourceStatus status
+}
+
+class PersonnelResource {
+    +String profession
+    +String roleName
+    +SkillLevel skillLevel
+    +boolean genericResource
+}
+
+class EquipmentResource {
+    +String equipmentType
+    +String manufacturer
+    +String model
+    +BigDecimal capacity
+    +UnitOfMeasure capacityUnit
+    +boolean owned
+}
+
+class MaterialResource {
+    +String materialType
+    +UnitOfMeasure defaultUnit
+}
+
+Resource <|-- PersonnelResource
+Resource <|-- EquipmentResource
+Resource <|-- MaterialResource
+
+' =====================================================
+' EQUIPMENT STRUCTURE
+' =====================================================
+
+class EquipmentComposition {
+    +UUID id
+    +BigDecimal quantity
+    +String description
+}
+
+EquipmentResource "1" <-- "0..*" EquipmentComposition : parentEquipment
+EquipmentResource "1" <-- "0..*" EquipmentComposition : childEquipment
+
+' =====================================================
+' ACTIVITY RESOURCE ASSIGNMENTS
+' =====================================================
+
+abstract class ResourceAssignment {
+    +UUID id
+    +BigDecimal quantity
+    +BigDecimal plannedWork
+    +WorkUnit workUnit
+    +BigDecimal utilizationRate
+    +LocalDate startDate
+    +LocalDate endDate
+    +boolean overtimeAllowed
+}
+
+class ActivityPersonnelAssignment {
+    +PersonnelAssignmentType assignmentType
+}
+
+class ActivityEquipmentAssignment {
+    +BigDecimal operatingHoursPerDay
+    +BigDecimal standbyHoursPerDay
+}
+
+class ActivityMaterialAssignment {
+    +BigDecimal requiredQuantity
+    +BigDecimal wastePercentage
+}
+
+ResourceAssignment <|-- ActivityPersonnelAssignment
+ResourceAssignment <|-- ActivityEquipmentAssignment
+ResourceAssignment <|-- ActivityMaterialAssignment
+
+Activity "1" *-- "0..*" ResourceAssignment
+
+PersonnelResource "1" <-- "0..*" ActivityPersonnelAssignment
+EquipmentResource "1" <-- "0..*" ActivityEquipmentAssignment
+MaterialResource "1" <-- "0..*" ActivityMaterialAssignment
+
+' =====================================================
+' EQUIPMENT CREW
+' =====================================================
+
+class EquipmentCrewAssignment {
+    +UUID id
+    +String roleName
+    +BigDecimal quantity
+    +BigDecimal workingHoursPerDay
+    +boolean mandatory
+}
+
+ActivityEquipmentAssignment "1" *-- "0..*" EquipmentCrewAssignment
+PersonnelResource "1" <-- "0..*" EquipmentCrewAssignment
+
+' =====================================================
+' PROJECT STAFF / INDIRECT PERSONNEL
+' =====================================================
+
+class ProjectStaffAssignment {
+    +UUID id
+    +String projectRole
+    +BigDecimal quantity
+    +BigDecimal allocationPercentage
+    +LocalDate startDate
+    +LocalDate endDate
+}
+
+EstimateVersion "1" *-- "0..*" ProjectStaffAssignment
+PersonnelResource "1" <-- "0..*" ProjectStaffAssignment
+
+' =====================================================
+' SHIFT AND CALENDAR
+' =====================================================
+
+class WorkCalendar {
+    +UUID id
+    +String name
+    +int workingDaysPerWeek
+    +BigDecimal workingHoursPerDay
+}
+
+class Shift {
+    +UUID id
+    +String name
+    +LocalTime startTime
+    +LocalTime endTime
+    +BigDecimal paidHours
+}
+
+Project "1" --> "1" WorkCalendar
+WorkCalendar "1" *-- "1..*" Shift
+ResourceAssignment "0..*" --> "0..1" Shift
+ProjectStaffAssignment "0..*" --> "0..1" Shift
+
+' =====================================================
+' COST MODEL
+' =====================================================
+
+class CostComponent {
+    +UUID id
+    +CostCategory category
+    +String name
+    +CalculationBasis calculationBasis
+    +BigDecimal unitPrice
+    +UnitOfMeasure unit
+    +boolean taxable
+    +BigDecimal taxRate
+    +LocalDate validFrom
+    +LocalDate validTo
+}
+
+Resource "1" *-- "0..*" CostComponent
+
+class FuelConsumption {
+    +UUID id
+    +FuelType fuelType
+    +BigDecimal consumptionPerHour
+    +UnitOfMeasure consumptionUnit
+}
+
+EquipmentResource "1" *-- "0..*" FuelConsumption
+
+class ProjectRate {
+    +UUID id
+    +RateType rateType
+    +String name
+    +BigDecimal value
+    +UnitOfMeasure unit
+    +LocalDate validFrom
+    +LocalDate validTo
+}
+
+EstimateVersion "1" *-- "0..*" ProjectRate
+
+class AdditionalCostItem {
+    +UUID id
+    +String code
+    +String name
+    +CostCategory category
+    +CalculationBasis calculationBasis
+    +BigDecimal quantity
+    +BigDecimal unitPrice
+    +String description
+}
+
+Activity "1" *-- "0..*" AdditionalCostItem
+EstimateVersion "1" *-- "0..*" AdditionalCostItem : projectLevelCosts
+
+' =====================================================
+' CALCULATION RESULTS
+' =====================================================
+
+class CostBreakdown {
+    +BigDecimal personnelCost
+    +BigDecimal equipmentCost
+    +BigDecimal fuelCost
+    +BigDecimal materialCost
+    +BigDecimal accommodationCost
+    +BigDecimal transportationCost
+    +BigDecimal overheadCost
+    +BigDecimal taxCost
+    +BigDecimal totalCost
+}
+
+class CostCalculator {
+    +CostBreakdown calculateActivityCost(Activity activity)
+    +CostBreakdown calculateProjectCost(EstimateVersion estimate)
+}
+
+CostCalculator ..> Activity
+CostCalculator ..> EstimateVersion
+CostCalculator ..> CostBreakdown
+
+' =====================================================
+' ENUMS
+' =====================================================
+
+enum ProjectStatus {
+    DRAFT
+    ACTIVE
+    COMPLETED
+    CANCELLED
+}
+
+enum EstimateStatus {
+    DRAFT
+    CALCULATED
+    APPROVED
+    ARCHIVED
+}
+
+enum ActivityType {
+    WORK
+    MILESTONE
+    MOBILIZATION
+    DEMOBILIZATION
+}
+
+enum ResourceStatus {
+    ACTIVE
+    INACTIVE
+}
+
+enum PersonnelAssignmentType {
+    DIRECT_LABOR
+    EQUIPMENT_CREW
+    SUPERVISION
+    SUPPORT
+}
+
+enum CostCategory {
+    SALARY
+    OVERTIME
+    ACCOMMODATION
+    FOOD
+    TRANSPORTATION
+    RENTAL
+    DEPRECIATION
+    FUEL
+    MAINTENANCE
+    INSURANCE
+    MATERIAL
+    MOBILIZATION
+    DEMOBILIZATION
+    OVERHEAD
+    OTHER
+}
+
+enum CalculationBasis {
+    PER_HOUR
+    PER_SHIFT
+    PER_DAY
+    PER_WEEK
+    PER_MONTH
+    PER_UNIT
+    FIXED
+    PERCENTAGE
+}
+
+enum RateType {
+    FUEL_PRICE
+    EXCHANGE_RATE
+    INFLATION_RATE
+    OVERHEAD_RATE
+    PROFIT_RATE
+    TAX_RATE
+}
+
+enum UnitOfMeasure {
+    PERSON
+    HOUR
+    DAY
+    MONTH
+    LITER
+    KILOGRAM
+    TON
+    CUBIC_METER
+    SQUARE_METER
+    METER
+    PIECE
+    PERCENT
+}
+
+enum DurationUnit {
+    HOUR
+    DAY
+    WEEK
+    MONTH
+}
+
+enum WorkUnit {
+    PERSON_HOUR
+    PERSON_DAY
+    EQUIPMENT_HOUR
+    EQUIPMENT_DAY
+}
+
+enum SkillLevel {
+    JUNIOR
+    EXPERIENCED
+    SENIOR
+    EXPERT
+}
+
+enum FuelType {
+    DIESEL
+    GASOLINE
+    ELECTRICITY
+    MARINE_DIESEL
+}
+
+@enduml
