@@ -38,6 +38,8 @@ Swagger UI's **Try it out** button can execute every endpoint directly from the 
 
 The resource referenced by an assignment determines whether it becomes an equipment, personnel, or material assignment. Errors use the standard `application/problem+json` format.
 
+Project currency supports `USD`, `EUR`, and `TRY`. `PUT /projects/{projectId}` accepts two user-defined exchange rates: `usdTryRate` means `1 USD = x TRY`, and `eurTryRate` means `1 EUR = x TRY`. The rates are stored with the project and returned by subsequent GET requests, so they only need to be entered once. When `currencyCode` changes, the saved rates are used if the request does not repeat them. The application derives USD/EUR automatically and converts all resource catalog prices and project additional-cost unit prices before saving the new project currency. Rates are never fetched or assumed externally.
+
 Data is currently kept in memory. The repository package is deliberately isolated so it can be replaced by JPA persistence without changing controllers.
 
 ## Angular client
