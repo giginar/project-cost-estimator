@@ -6,8 +6,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication
 public class CostestimatorApplication {
 
-	public static void main(String[] args) {
-		SpringApplication.run(CostestimatorApplication.class, args);
-	}
-
+    public static void main(String[] args) {
+        SpringApplication.run(CostestimatorApplication.class, args);
+    }
 }
