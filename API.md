@@ -2,6 +2,38 @@
 
 Base path: `/api/v1`
 
+## Authentication and roles
+
+All project and administration endpoints require `Authorization: Bearer <accessToken>`. Obtain an eight-hour opaque access token from `POST /auth/login`.
+
+- `ENGINEER`: full project, schedule, resource, and cost editing.
+- `MANAGER`: read-only project/resource access plus `PUT /projects/{projectId}` for Project Settings.
+- `ADMIN`: user administration only; project endpoints are denied.
+
+Authentication endpoints:
+
+- `POST /auth/login`
+- `POST /auth/register` (creates a pending `MANAGER` account)
+- `GET /auth/verify?token=...`
+- `POST /auth/forgot-password`
+- `POST /auth/reset-password`
+- `GET /auth/me`
+- `POST /auth/logout`
+- `GET|POST /admin/users` (`ADMIN` only)
+- `GET /admin/users/mail-outbox` (`ADMIN` only, development email mode)
+
+Passwords are stored as BCrypt hashes. Registration and admin-created accounts cannot sign in until the 24-hour email-verification link is used. Configure SMTP with `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_AUTH`, `SMTP_STARTTLS`, `MAIL_FROM`, and set `MAIL_DELIVERY_ENABLED=true`. The SMTP health check follows `MAIL_DELIVERY_ENABLED`; it can be overridden with `MAIL_HEALTH_ENABLED`. With delivery disabled, no SMTP connection is attempted and verification messages are logged and exposed only to administrators in the development mail outbox.
+
+Password-reset requests always return the same response whether an account exists or not. Reset links contain a cryptographically random token, expire after 30 minutes, can be used only once, and invalidate every active session for that user after the password changes.
+
+Demo accounts are already verified:
+
+| Role | Email | Password |
+|---|---|---|
+| Engineer | `engineer@example.com` | `Engineer123!` |
+| Manager | `manager@example.com` | `Manager123!` |
+| Admin | `admin@example.com` | `Admin123!` |
+
 ## Interactive documentation
 
 Run the application with `.\mvnw.cmd spring-boot:run`, then open:
@@ -35,6 +67,8 @@ Swagger UI's **Try it out** button can execute every endpoint directly from the 
 - `POST /projects/{projectId}/estimates/{estimateId}/equipment-assignments/{assignmentId}/crew`
 - `POST /projects/{projectId}/estimates/{estimateId}/staff`
 - `GET /projects/{projectId}/estimates/{estimateId}/cost`
+
+The client project picker lists every project, switches the active schedule, and lets an Engineer create a project or add a WBS to the active project. New projects are created with a baseline estimate and require an initial WBS code and name.
 
 The resource referenced by an assignment determines whether it becomes an equipment, personnel, or material assignment. Errors use the standard `application/problem+json` format.
 
