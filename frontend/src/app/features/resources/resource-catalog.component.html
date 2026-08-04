@@ -1,0 +1,39 @@
+<div class="page-heading">
+  <div><p class="eyebrow">RESOURCE CATALOG</p><h1>{{ title() }}</h1><p>{{ subtitle() }}</p></div>
+  <button class="primary-button" (click)="openDialog()">＋ Add {{ title().toLowerCase() }}</button>
+</div>
+
+<section class="catalog-card">
+  <header><div><h2>{{ title() }} library</h2><span>{{ filteredResources().length }} resources</span></div><label><span>⌕</span><input #query type="search" [placeholder]="'Search ' + title().toLowerCase()" (input)="search.set(query.value)" /></label></header>
+  <div class="catalog-table">
+    <div class="table-head"><span>CODE</span><span>NAME</span><span>{{ subtypeLabel().toUpperCase() }}</span><span>ECONOMICS</span></div>
+    @for (resource of filteredResources(); track resource.id) {
+      <article><code>{{ resource.code }}</code><div><strong>{{ resource.name }}</strong><small>{{ resource.description || 'No description' }}</small></div><span>{{ resource.subtype }}</span><b>{{ economicSummary(resource) }}</b></article>
+    } @empty {
+      <div class="empty"><strong>No {{ title().toLowerCase() }} added yet</strong><p>Use “Add {{ title().toLowerCase() }}” to create the first resource.</p></div>
+    }
+  </div>
+</section>
+
+@if (dialogOpen()) {
+  <div class="catalog-dialog-backdrop" (mousedown)="dialogOpen.set(false)">
+    <section class="catalog-dialog" role="dialog" aria-modal="true" [attr.aria-label]="'Add ' + title().toLowerCase()" (mousedown)="$event.stopPropagation()">
+      <header><div><small>RESOURCE CATALOG</small><h2>Add {{ title().toLowerCase() }}</h2><p>Create a resource that can be assigned to activities.</p></div><button type="button" aria-label="Close" (click)="dialogOpen.set(false)">×</button></header>
+      <form (submit)="$event.preventDefault(); submit()">
+        <label><span>Code *</span><input type="text" [value]="draft().code" (input)="updateDraft('code', $any($event.target).value)" placeholder="e.g. {{ type() === 'personnel' ? 'PER-01' : type() === 'equipment' ? 'EQ-01' : 'MAT-01' }}" required /></label>
+        <label><span>{{ subtypeLabel() }} *</span><input type="text" [value]="draft().subtype" (input)="updateDraft('subtype', $any($event.target).value)" [placeholder]="subtypeLabel()" required /></label>
+        <label class="wide"><span>Name *</span><input type="text" [value]="draft().name" (input)="updateDraft('name', $any($event.target).value)" [placeholder]="title() + ' name'" required /></label>
+        @if (type() === 'material') { <label class="wide"><span>Default unit *</span><select [value]="draft().defaultUnit" (change)="updateDraft('defaultUnit', $any($event.target).value)"><option value="PIECE">Piece</option><option value="KILOGRAM">Kilogram</option><option value="TON">Ton</option><option value="LITER">Liter</option><option value="METER">Meter</option><option value="SQUARE_METER">Square meter</option><option value="CUBIC_METER">Cubic meter</option></select></label> }
+        <label><span>{{ type() === 'personnel' ? 'Salary' : type() === 'equipment' ? 'Equipment rate' : 'Unit price' }} ({{ currency() }})</span><input type="number" min="0" step="0.01" [value]="draft().unitPrice ?? ''" (input)="updateDraft('unitPrice', $any($event.target).value === '' ? null : $any($event.target).valueAsNumber)" placeholder="0.00" /></label>
+        @if (type() !== 'material') { <label><span>Rate period</span><select [value]="draft().calculationBasis" (change)="updateDraft('calculationBasis', $any($event.target).value)"><option value="PER_HOUR">Hourly</option><option value="PER_DAY">Daily</option><option value="PER_WEEK">Weekly</option><option value="PER_MONTH">Monthly</option></select></label> }
+        @if (type() === 'equipment') {
+          <label><span>Fuel / energy type</span><select [value]="draft().fuelType" (change)="updateDraft('fuelType', $any($event.target).value)"><option value="DIESEL">Diesel</option><option value="GASOLINE">Gasoline</option><option value="MARINE_DIESEL">Marine diesel</option><option value="ELECTRICITY">Electricity</option></select></label>
+          <label><span>Consumption per hour</span><input type="number" min="0" step="0.01" [value]="draft().fuelConsumption ?? ''" (input)="updateDraft('fuelConsumption', $any($event.target).value === '' ? null : $any($event.target).valueAsNumber)" placeholder="0.00" /></label>
+          <label class="wide"><span>Fuel / energy unit price ({{ currency() }})</span><input type="number" min="0" step="0.01" [value]="draft().fuelUnitPrice ?? ''" (input)="updateDraft('fuelUnitPrice', $any($event.target).value === '' ? null : $any($event.target).valueAsNumber)" placeholder="0.00" /></label>
+        }
+        <label class="wide"><span>Description</span><textarea [value]="draft().description" (input)="updateDraft('description', $any($event.target).value)" placeholder="Optional description"></textarea></label>
+        <footer><button type="button" class="cancel" (click)="dialogOpen.set(false)">Cancel</button><button type="submit" class="save">Add {{ title().toLowerCase() }}</button></footer>
+      </form>
+    </section>
+  </div>
+}

@@ -1,0 +1,74 @@
+<div class="app-shell" [class.sidebar-collapsed]="sidebarCollapsed()">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-mark">CE</span>
+      <span class="brand-copy"><strong>Construct</strong><small>Cost Estimator</small></span>
+    </div>
+    <nav aria-label="Main navigation">
+      <a [class.active]="currentPage() === 'overview'" (click)="currentPage.set('overview')"><span class="nav-icon">⌂</span><span>Overview</span></a>
+      <a [class.active]="currentPage() === 'schedule'" (click)="currentPage.set('schedule')"><span class="nav-icon">▤</span><span>Schedule</span></a>
+      <a [class.active]="currentPage() === 'personnel'" (click)="currentPage.set('personnel')"><span class="nav-icon">♙</span><span>Personnel</span></a>
+      <a [class.active]="currentPage() === 'equipment'" (click)="currentPage.set('equipment')"><span class="nav-icon">◇</span><span>Equipment</span></a>
+      <a [class.active]="currentPage() === 'material'" (click)="currentPage.set('material')"><span class="nav-icon">▧</span><span>Material</span></a>
+      <a><span class="nav-icon">◫</span><span>Cost library</span></a>
+      <a [class.active]="currentPage() === 'report'" (click)="currentPage.set('report')"><span class="nav-icon">↗</span><span>Reports</span></a>
+    </nav>
+    <div class="sidebar-footer">
+      <a><span class="nav-icon">⚙</span><span>Project settings</span></a>
+      <div class="user"><span>YK</span><p><strong>Yigit Kaya</strong><small>Project manager</small></p></div>
+    </div>
+  </aside>
+
+  <main>
+    <header class="topbar">
+      <button class="icon-button" (click)="sidebarCollapsed.set(!sidebarCollapsed())" aria-label="Toggle navigation">☰</button>
+      <div class="project-picker"><small>PROJECT</small><strong>{{ projectName() }}</strong><span>⌄</span></div>
+      <div class="top-actions"><button class="icon-button" aria-label="Notifications">◌</button><button class="share-button">Share project</button></div>
+    </header>
+
+    @if (currentPage() === 'overview') {
+      <section class="content"><app-project-overview [projectName]="projectName()" [projectStart]="projectStart()" [projectEnd]="projectEnd()" [currency]="currencyCode()" [tasks]="tasks()" [resources]="resources()" /></section>
+    } @else if (currentPage() === 'schedule') {
+    <section class="content">
+      <div class="page-heading">
+        <div><p class="eyebrow">PROJECT SCHEDULE</p><h1>Work programme</h1><p>Plan activities and adjust their dates directly on the timeline.</p></div>
+        <button class="primary-button" (click)="openActivityDialog()">＋ Add activity</button>
+      </div>
+
+      <div class="summary-grid single">
+        <article><span class="summary-icon blue">◫</span><div><small>PROJECT WINDOW</small><strong>03 Aug — 26 Sep</strong><p>55 calendar days</p></div></article>
+      </div>
+
+      <app-gantt [tasks]="tasks()" [resources]="resources()" [currency]="currencyCode()" (taskChange)="updateTask($event)" (resourcesAdd)="addResources($event)" />
+    </section>
+    } @else if (currentPage() === 'report') {
+      <section class="content"><app-project-report [projectName]="projectName()" [currency]="currencyCode()" [tasks]="tasks()" [resources]="resources()" /></section>
+    } @else {
+      <section class="content"><app-resource-catalog [type]="$any(currentPage())" [resources]="resources()" [currency]="currencyCode()" (resourceCreate)="createResource($event)" /></section>
+    }
+  </main>
+</div>
+
+@if (activityDialogOpen()) {
+  <div class="activity-dialog-backdrop" (mousedown)="!activitySaving() && activityDialogOpen.set(false)">
+    <section class="activity-dialog" role="dialog" aria-modal="true" aria-labelledby="new-activity-title" (mousedown)="$event.stopPropagation()">
+      <header>
+        <div><small>PROJECT SCHEDULE</small><h2 id="new-activity-title">Add activity</h2><p>Create a new activity in the selected WBS.</p></div>
+        <button type="button" aria-label="Close" [disabled]="activitySaving()" (click)="activityDialogOpen.set(false)">×</button>
+      </header>
+      <form (submit)="$event.preventDefault(); createActivity()">
+        <label class="wide"><span>WBS *</span><select [value]="activityDraft().wbsId" (change)="updateActivityDraft('wbsId', $any($event.target).value)" required>
+          <option value="" disabled>Select WBS</option>
+          @for (wbs of wbsItems(); track wbs.id) { <option [value]="wbs.id">{{ wbs.code }} — {{ wbs.name }}</option> }
+        </select></label>
+        <label><span>Activity code *</span><input type="text" [value]="activityDraft().code" (input)="updateActivityDraft('code', $any($event.target).value)" placeholder="e.g. 2.4" required /></label>
+        <label><span>Activity type *</span><select [value]="activityDraft().type" (change)="updateActivityDraft('type', $any($event.target).value)"><option value="WORK">Work</option><option value="MILESTONE">Milestone</option><option value="MOBILIZATION">Mobilization</option><option value="DEMOBILIZATION">Demobilization</option></select></label>
+        <label class="wide"><span>Activity name *</span><input type="text" [value]="activityDraft().name" (input)="updateActivityDraft('name', $any($event.target).value)" placeholder="Enter activity name" required /></label>
+        <label><span>Start date *</span><input type="date" [value]="activityDraft().start" (input)="updateActivityDraft('start', $any($event.target).value)" required /></label>
+        <label><span>Finish date *</span><input type="date" [value]="activityDraft().end" [min]="activityDraft().start" (input)="updateActivityDraft('end', $any($event.target).value)" required /></label>
+        @if (activityError()) { <p class="activity-error" role="alert">{{ activityError() }}</p> }
+        <footer><button type="button" class="cancel" [disabled]="activitySaving()" (click)="activityDialogOpen.set(false)">Cancel</button><button type="submit" class="save" [disabled]="activitySaving() || !scheduleContext">{{ activitySaving() ? 'Saving…' : 'Add activity' }}</button></footer>
+      </form>
+    </section>
+  </div>
+}

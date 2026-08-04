@@ -1,0 +1,92 @@
+<section class="gantt-card">
+  <div class="gantt-toolbar">
+    <div><h2>Activity timeline</h2><span>{{ filteredTasks().length }} activities</span></div>
+    <label class="search"><span>⌕</span><input #query type="search" placeholder="Search activities" (input)="search.set(query.value)" /></label>
+    <div class="zoom" aria-label="Timeline zoom">
+      <button [class.active]="dayWidth() === 24" (click)="setZoom(24)">Compact</button>
+      <button [class.active]="dayWidth() === 34" (click)="setZoom(34)">Week</button>
+      <button [class.active]="dayWidth() === 50" (click)="setZoom(50)">Day</button>
+    </div>
+    <button class="more" aria-label="More actions">•••</button>
+  </div>
+
+  <div class="interaction-hint"><span>↔</span> Drag either end to adjust dates · Right-click a bar to add personnel, equipment or material</div>
+
+  <div class="gantt-scroll">
+    <div class="gantt-layout" [style.--timeline-width.px]="timelineWidth()" [style.--day-width.px]="dayWidth()">
+      <div class="task-header">
+        <span>ACTIVITY</span><span>START</span><span>FINISH</span><span>DAYS</span>
+      </div>
+      <div class="timeline-header">
+        <div class="month-row">
+          @for (month of months(); track month.label) { <div [style.width.px]="month.days * dayWidth()">{{ month.label }}</div> }
+        </div>
+        <div class="day-row">
+          @for (day of days(); track day.date) {
+            <div [class.weekend]="day.weekend" [class.today]="isToday(day.date)"><small>{{ day.date | date:'EEE' }}</small><strong>{{ day.label }}</strong></div>
+          }
+        </div>
+      </div>
+
+      <div class="task-body">
+        @for (group of groups(); track group) {
+          <div class="group-label"><span>⌄</span>{{ group }}</div>
+          @for (task of tasksInGroup(group); track task.id) {
+            <div class="task-row">
+              <div class="task-name"><span><strong>{{ task.name }}</strong><small>{{ task.code }}</small></span></div>
+              <time>{{ displayTask(task).start | date:'dd MMM' }}</time>
+              <time>{{ displayTask(task).end | date:'dd MMM' }}</time>
+              <b>{{ (barWidth(task) / dayWidth()) }}</b>
+            </div>
+          }
+        }
+      </div>
+
+      <div class="timeline-body">
+        <div class="grid-columns">
+          @for (day of days(); track day.date) { <div [class.weekend]="day.weekend" [class.today]="isToday(day.date)"></div> }
+        </div>
+        @for (group of groups(); track group) {
+          <div class="timeline-group-row"></div>
+          @for (task of tasksInGroup(group); track task.id) {
+            <div class="bar-row">
+              <div class="task-bar" [class.resizing]="drag()?.task?.id === task.id" [style.left.px]="barLeft(task)" [style.width.px]="barWidth(task)" (contextmenu)="openResourceDialog($event, task)">
+                <button class="resize-handle start" aria-label="Change start date" (pointerdown)="beginResize($event, task, 'start')"></button>
+                <span>{{ task.name }}</span>
+                <button class="resize-handle end" aria-label="Change finish date" (pointerdown)="beginResize($event, task, 'end')"></button>
+                @if (drag()?.task?.id === task.id) {
+                  <div class="date-popover">{{ displayTask(task).start | date:'dd MMM' }} — {{ displayTask(task).end | date:'dd MMM' }}</div>
+                }
+                <div class="resource-tooltip">
+                  <header><strong>{{ task.name }}</strong><small>{{ task.assignments.length }} assigned resources</small></header>
+                  @for (resource of resourcesForTask(task); track resource.id) {
+                    <div class="tooltip-resource"><i [class]="resource.type"></i><span><strong>{{ resource.name }}</strong><small>{{ rateSummary(resource) }}</small>@if (fuelSummary(resource)) { <small>{{ fuelSummary(resource) }}</small> }</span><b>{{ estimatedCost(task, resource) }}</b></div>
+                  } @empty { <p>No resources assigned. Right-click to add one.</p> }
+                </div>
+              </div>
+            </div>
+          }
+        }
+      </div>
+    </div>
+  </div>
+</section>
+
+@if (resourceDialogTask(); as task) {
+  <div class="dialog-backdrop" (mousedown)="resourceDialogTask.set(null)">
+    <section class="resource-dialog" role="dialog" aria-modal="true" aria-labelledby="resource-dialog-title" (mousedown)="$event.stopPropagation()">
+      <header><div><small>ADD TO ACTIVITY</small><h3 id="resource-dialog-title">{{ task.name }}</h3></div><button aria-label="Close" (click)="resourceDialogTask.set(null)">×</button></header>
+      <div class="resource-columns">
+        @for (type of ['personnel', 'equipment', 'material']; track type) {
+          <div class="resource-group">
+            <h4>{{ type === 'equipment' ? 'Equipment' : type === 'personnel' ? 'Personnel' : 'Material' }}</h4>
+            @for (resource of resourcesByType($any(type)); track resource.id) {
+              <label><input type="checkbox" [checked]="selectedResourceIds().has(resource.id)" (change)="toggleResource(resource.id)" /><span><strong>{{ resource.name }}</strong><small>{{ resource.code }} · {{ resource.subtype }}</small></span></label>
+            } @empty { <p>No {{ type }} resources found.</p> }
+          </div>
+        }
+      </div>
+      <footer><button class="cancel" (click)="resourceDialogTask.set(null)">Cancel</button><button class="confirm" (click)="addResources()">Save assignments ({{ selectedResourceIds().size }})</button></footer>
+    </section>
+  </div>
+}

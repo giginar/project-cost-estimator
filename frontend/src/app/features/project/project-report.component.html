@@ -1,0 +1,10 @@
+<div class="page-heading"><div><p class="eyebrow">PROJECT REPORTS</p><h1>Cost breakdown</h1><p>{{ projectName() }} · WBS and activity-level estimated costs.</p></div></div>
+<div class="report-summary"><article><small>PERSONNEL</small><strong>{{ money(total().personnel) }}</strong></article><article><small>EQUIPMENT</small><strong>{{ money(total().equipment) }}</strong></article><article><small>MATERIAL</small><strong>{{ money(total().material) }}</strong></article><article><small>FUEL / ENERGY</small><strong>{{ money(total().fuel) }}</strong></article><article class="total"><small>PROJECT TOTAL</small><strong>{{ money(total().total) }}</strong></article></div>
+<section class="report-card">
+  <div class="report-row head"><span>WBS / ACTIVITY</span><span>PERSONNEL</span><span>EQUIPMENT</span><span>MATERIAL</span><span>FUEL</span><span>TOTAL</span></div>
+  @for (group of groups(); track group.name) {
+    <div class="report-row group"><strong>{{ group.name }}</strong><span>{{ money(group.costs.personnel) }}</span><span>{{ money(group.costs.equipment) }}</span><span>{{ money(group.costs.material) }}</span><span>{{ money(group.costs.fuel) }}</span><b>{{ money(group.costs.total) }}</b></div>
+    @for (item of group.tasks; track item.task.id) { <div class="report-row activity"><span><code>{{ item.task.code }}</code>{{ item.task.name }}</span><span>{{ money(item.costs.personnel) }}</span><span>{{ money(item.costs.equipment) }}</span><span>{{ money(item.costs.material) }}</span><span>{{ money(item.costs.fuel) }}</span><b>{{ money(item.costs.total) }}</b></div> }
+  }
+  <div class="report-row grand"><strong>PROJECT TOTAL</strong><span>{{ money(total().personnel) }}</span><span>{{ money(total().equipment) }}</span><span>{{ money(total().material) }}</span><span>{{ money(total().fuel) }}</span><b>{{ money(total().total) }}</b></div>
+</section>

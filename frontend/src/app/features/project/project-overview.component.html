@@ -1,0 +1,23 @@
+<div class="page-heading"><div><p class="eyebrow">PROJECT OVERVIEW</p><h1>{{ projectName() }}</h1><p>A complete view of the work breakdown, activities and assigned resources.</p></div></div>
+<div class="overview-summary">
+  <article><small>PROJECT WINDOW</small><strong>{{ projectStart() }} — {{ projectEnd() }}</strong></article>
+  <article><small>WBS ITEMS</small><strong>{{ groups().length }}</strong></article>
+  <article><small>ACTIVITIES</small><strong>{{ tasks().length }}</strong></article>
+  <article><small>RESOURCE ASSIGNMENTS</small><strong>{{ assignmentCount() }}</strong></article>
+  <article class="cost"><small>ESTIMATED PROJECT COST</small><strong>{{ money(totalCost()) }}</strong></article>
+</div>
+<div class="overview-tree">
+  @for (group of groups(); track group.name) {
+    <section class="wbs-card"><header><div><span>WBS</span><h2>{{ group.name }}</h2></div><b>{{ group.tasks.length }} activities</b></header>
+      @for (task of group.tasks; track task.id) {
+        <article class="activity-card">
+          <div class="activity-copy"><code>{{ task.code }}</code><span><strong>{{ task.name }}</strong><small>{{ task.start }} — {{ task.end }}</small></span><b>{{ taskTotal(task) }}</b></div>
+          <div class="assigned-list">
+            @for (item of resourcesFor(task); track item.resource.id) { <span><i [class]="item.resource.type"></i><strong>{{ item.resource.name }}</strong><small>{{ item.resource.subtype }}</small><b>× {{ item.quantity }}</b></span> }
+            @empty { <p>No resources assigned</p> }
+          </div>
+        </article>
+      }
+    </section>
+  }
+</div>
