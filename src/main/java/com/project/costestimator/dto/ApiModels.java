@@ -14,9 +14,11 @@ public final class ApiModels {
 
     public record ProjectRequest(@NotBlank String code, @NotBlank String name, String description,
                                  @NotNull LocalDate plannedStartDate, @NotNull LocalDate plannedEndDate,
-                                 @NotBlank String currencyCode, ProjectStatus status) {}
-    public record ProjectSummary(UUID id, String code, String name, LocalDate plannedStartDate,
-                                 LocalDate plannedEndDate, Currency currency, ProjectStatus status) {}
+                                 @NotBlank String currencyCode, String languageCode, ProjectStatus status,
+                                 @Positive BigDecimal usdTryRate, @Positive BigDecimal eurTryRate) {}
+    public record ProjectSummary(UUID id, String code, String name, String description, LocalDate plannedStartDate,
+                                 LocalDate plannedEndDate, Currency currency, String languageCode,
+                                 BigDecimal usdTryRate, BigDecimal eurTryRate, ProjectStatus status) {}
     public record ProjectDetail(ProjectSummary project, List<EstimateView> estimates) {}
     public record EstimateRequest(@NotBlank String name, String description) {}
     public record EstimateView(UUID id, String name, String description, int versionNumber, EstimateStatus status,
@@ -59,7 +61,9 @@ public final class ApiModels {
     public record MaterialRequest(@NotBlank String code, @NotBlank String name, String description,
                                   @NotBlank String materialType, @NotNull UnitOfMeasure defaultUnit) {}
     public record ResourceView(UUID id, String type, String code, String name, String description, ResourceStatus status,
-                               String subtype, List<CostView> costs, List<FuelView> fuelConsumptions) {}
+                               String subtype, String roleName, SkillLevel skillLevel, Boolean genericResource,
+                               String manufacturer, String model, BigDecimal capacity, UnitOfMeasure capacityUnit, Boolean owned,
+                               UnitOfMeasure defaultUnit, List<CostView> costs, List<FuelView> fuelConsumptions) {}
     public record CostRequest(@NotNull CostCategory category, @NotBlank String name, @NotNull CalculationBasis calculationBasis,
                               @PositiveOrZero BigDecimal unitPrice, UnitOfMeasure unit, Boolean taxable,
                               @DecimalMin("0.0") BigDecimal taxRate, LocalDate validFrom, LocalDate validTo) {}

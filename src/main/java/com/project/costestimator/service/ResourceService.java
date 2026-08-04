@@ -11,6 +11,8 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.UUID;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 @Service
 @RequiredArgsConstructor
@@ -45,6 +47,13 @@ public class ResourceService {
     }
     public ResourceView get(UUID id) { return view(require(id, Resource.class)); }
     public void delete(UUID id) { require(id, Resource.class); repository.deleteById(id); }
+    public void convertAllPrices(BigDecimal conversionRate) {
+        repository.findAll().forEach(resource -> {
+            resource.getCostComponents().forEach(cost ->
+                    cost.setUnitPrice(cost.getUnitPrice().multiply(conversionRate).setScale(4, RoundingMode.HALF_UP).stripTrailingZeros()));
+            repository.save(resource);
+        });
+    }
 
     public CostView addCost(UUID resourceId, CostRequest request) {
         Resource resource = require(resourceId, Resource.class);
@@ -82,11 +91,21 @@ public class ResourceService {
             default -> "";
         };
         String type = resource.getClass().getSimpleName().replace("Resource", "").toUpperCase();
+        String roleName = resource instanceof PersonnelResource personnel ? personnel.getRoleName() : null;
+        com.project.costestimator.domain.enums.SkillLevel skillLevel = resource instanceof PersonnelResource personnel ? personnel.getSkillLevel() : null;
+        Boolean genericResource = resource instanceof PersonnelResource personnel ? personnel.isGenericResource() : null;
+        String manufacturer = resource instanceof EquipmentResource equipment ? equipment.getManufacturer() : null;
+        String model = resource instanceof EquipmentResource equipment ? equipment.getModel() : null;
+        java.math.BigDecimal capacity = resource instanceof EquipmentResource equipment ? equipment.getCapacity() : null;
+        com.project.costestimator.domain.enums.UnitOfMeasure capacityUnit = resource instanceof EquipmentResource equipment ? equipment.getCapacityUnit() : null;
+        Boolean owned = resource instanceof EquipmentResource equipment ? equipment.isOwned() : null;
+        com.project.costestimator.domain.enums.UnitOfMeasure defaultUnit = resource instanceof MaterialResource material ? material.getDefaultUnit() : null;
         List<FuelView> fuelConsumptions = resource instanceof EquipmentResource equipment
                 ? equipment.getFuelConsumptions().stream().map(fuel -> new FuelView(fuel.getId(), fuel.getFuelType(), fuel.getConsumptionPerHour(), fuel.getConsumptionUnit())).toList()
                 : List.of();
         return new ResourceView(resource.getId(), type, resource.getCode(), resource.getName(), resource.getDescription(),
-                resource.getStatus(), subtype, resource.getCostComponents().stream().map(this::costView).toList(), fuelConsumptions);
+                resource.getStatus(), subtype, roleName, skillLevel, genericResource, manufacturer, model, capacity, capacityUnit, owned,
+                defaultUnit, resource.getCostComponents().stream().map(this::costView).toList(), fuelConsumptions);
     }
     private CostView costView(CostComponent c) { return new CostView(c.getId(), c.getCategory(), c.getName(), c.getCalculationBasis(), c.getUnitPrice(), c.getUnit(), c.isTaxable(), c.getTaxRate()); }
 }

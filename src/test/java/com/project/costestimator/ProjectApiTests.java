@@ -85,6 +85,25 @@ class ProjectApiTests {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.equipmentCost").value(4000))
                 .andExpect(jsonPath("$.personnelCost").value(800)).andExpect(jsonPath("$.fuelCost").value(640))
                 .andExpect(jsonPath("$.totalCost").value(5440));
+        mvc.perform(put("/api/v1/projects/{p}", projectId).contentType(MediaType.APPLICATION_JSON).content("""
+                {"code":"MAR-01","name":"Marine excavation","plannedStartDate":"2026-08-01","plannedEndDate":"2026-08-10","currencyCode":"TRY","languageCode":"tr","status":"ACTIVE","usdTryRate":35,"eurTryRate":38}
+                """))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.project.currency").value("TRY"))
+                .andExpect(jsonPath("$.project.languageCode").value("tr")).andExpect(jsonPath("$.project.usdTryRate").value(35))
+                .andExpect(jsonPath("$.project.eurTryRate").value(38)).andExpect(jsonPath("$.project.status").value("ACTIVE"));
+        mvc.perform(get("/api/v1/projects/{p}", projectId)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.project.usdTryRate").value(35)).andExpect(jsonPath("$.project.eurTryRate").value(38));
+        mvc.perform(put("/api/v1/projects/{p}", projectId).contentType(MediaType.APPLICATION_JSON).content("""
+                {"code":"MAR-01","name":"Marine excavation","plannedStartDate":"2026-08-01","plannedEndDate":"2026-08-10","currencyCode":"EUR","languageCode":"tr","status":"ACTIVE"}
+                """))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.project.currency").value("EUR"))
+                .andExpect(jsonPath("$.project.usdTryRate").value(35)).andExpect(jsonPath("$.project.eurTryRate").value(38));
+        mvc.perform(get("/api/v1/resources/{id}", equipmentId)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.costs[0].unitPrice").value(26.3158));
+        mvc.perform(get("/api/v1/projects/{p}/estimates/{e}/cost", projectId, estimateId))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.equipmentCost").value(105.2632))
+                .andExpect(jsonPath("$.personnelCost").value(21.0528)).andExpect(jsonPath("$.fuelCost").value(16.8448))
+                .andExpect(jsonPath("$.totalCost").value(143.1608));
     }
 
     @Test

@@ -29,7 +29,7 @@ public class DemoDataInitializer implements ApplicationRunner {
 
         var project = projects.create(new ProjectRequest(
                 "MAR-001", "Marine Excavation — Phase 1", "Demo marine excavation project",
-                LocalDate.of(2026, 8, 3), LocalDate.of(2026, 9, 26), "USD", ProjectStatus.DRAFT));
+                LocalDate.of(2026, 8, 3), LocalDate.of(2026, 9, 26), "USD", "en", ProjectStatus.DRAFT, null, null));
         UUID projectId = project.project().id();
         UUID estimateId = projects.addEstimate(projectId, new EstimateRequest("Baseline Estimate", "Initial demo estimate")).id();
 
@@ -70,7 +70,7 @@ public class DemoDataInitializer implements ApplicationRunner {
         assign(projectId, estimateId, survey, buoy.id(), new BigDecimal("6"), null);
         assign(projectId, estimateId, areaA, operator.id(), new BigDecimal("2"), WorkUnit.PERSON_HOUR);
         assign(projectId, estimateId, areaA, foreman.id(), BigDecimal.ONE, WorkUnit.PERSON_DAY);
-        assign(projectId, estimateId, areaA, dredger.id(), BigDecimal.ONE, WorkUnit.EQUIPMENT_HOUR);
+        var dredgerAssignment = assign(projectId, estimateId, areaA, dredger.id(), BigDecimal.ONE, WorkUnit.EQUIPMENT_HOUR);
         assign(projectId, estimateId, areaB, operator.id(), new BigDecimal("2"), WorkUnit.PERSON_HOUR);
         assign(projectId, estimateId, areaB, dredger.id(), BigDecimal.ONE, WorkUnit.EQUIPMENT_HOUR);
         assign(projectId, estimateId, transport, truck.id(), new BigDecimal("4"), WorkUnit.EQUIPMENT_HOUR);
@@ -82,6 +82,8 @@ public class DemoDataInitializer implements ApplicationRunner {
         assign(projectId, estimateId, finalSurvey, surveyBoat.id(), BigDecimal.ONE, WorkUnit.EQUIPMENT_HOUR);
         assign(projectId, estimateId, demobilization, foreman.id(), BigDecimal.ONE, WorkUnit.PERSON_DAY);
         assign(projectId, estimateId, demobilization, truck.id(), new BigDecimal("2"), WorkUnit.EQUIPMENT_HOUR);
+        projects.addCrew(projectId, estimateId, dredgerAssignment.id(), new CrewRequest(operator.id(), "Dredge operator", BigDecimal.ONE, BigDecimal.valueOf(8), true));
+        projects.addStaff(projectId, estimateId, new StaffRequest(foreman.id(), "Project site manager", BigDecimal.ONE, BigDecimal.valueOf(50), LocalDate.of(2026, 8, 3), LocalDate.of(2026, 9, 26)));
     }
 
     private WbsView addWbs(UUID projectId, UUID estimateId, String code, String name, int sequence) {
@@ -98,21 +100,23 @@ public class DemoDataInitializer implements ApplicationRunner {
     }
 
     private ResourceView personnel(String code, String name, String profession, BigDecimal price, CalculationBasis basis) {
-        var resource = resources.createPersonnel(new PersonnelRequest(code, name, null, profession, null, SkillLevel.EXPERIENCED, true));
+        var resource = resources.createPersonnel(new PersonnelRequest(code, name, name + " assigned to marine construction activities", profession, name, SkillLevel.EXPERIENCED, true));
         addCost(resource.id(), CostCategory.SALARY, "Base salary", price, basis, basis == CalculationBasis.PER_HOUR ? UnitOfMeasure.HOUR : UnitOfMeasure.DAY);
         return resources.get(resource.id());
     }
 
     private ResourceView equipment(String code, String name, String type, BigDecimal price, CalculationBasis basis, FuelType fuelType, BigDecimal consumption, BigDecimal fuelPrice) {
-        var resource = resources.createEquipment(new EquipmentRequest(code, name, null, type, null, null, null, null, false));
+        var resource = resources.createEquipment(new EquipmentRequest(code, name, name + " used by the demo marine project", type, "MarineWorks Co.", code + "-2026", BigDecimal.ONE, UnitOfMeasure.PIECE, false));
         addCost(resource.id(), CostCategory.RENTAL, "Equipment rate", price, basis, basis == CalculationBasis.PER_HOUR ? UnitOfMeasure.HOUR : UnitOfMeasure.DAY);
         addCost(resource.id(), CostCategory.FUEL, "Fuel unit price", fuelPrice, CalculationBasis.PER_UNIT, UnitOfMeasure.LITER);
+        addCost(resource.id(), CostCategory.MAINTENANCE, "Planned maintenance", price.multiply(new BigDecimal("0.08")), basis, basis == CalculationBasis.PER_HOUR ? UnitOfMeasure.HOUR : UnitOfMeasure.DAY);
+        addCost(resource.id(), CostCategory.INSURANCE, "Equipment insurance", price.multiply(new BigDecimal("0.03")), basis, basis == CalculationBasis.PER_HOUR ? UnitOfMeasure.HOUR : UnitOfMeasure.DAY);
         resources.addFuel(resource.id(), new FuelRequest(fuelType, consumption, UnitOfMeasure.LITER));
         return resources.get(resource.id());
     }
 
     private ResourceView material(String code, String name, String type, BigDecimal price, UnitOfMeasure unit) {
-        var resource = resources.createMaterial(new MaterialRequest(code, name, null, type, unit));
+        var resource = resources.createMaterial(new MaterialRequest(code, name, name + " consumed by project activities", type, unit));
         addCost(resource.id(), CostCategory.MATERIAL, "Unit price", price, CalculationBasis.PER_UNIT, unit);
         return resources.get(resource.id());
     }
@@ -121,10 +125,10 @@ public class DemoDataInitializer implements ApplicationRunner {
         resources.addCost(resourceId, new CostRequest(category, name, basis, price, unit, false, BigDecimal.ZERO, null, null));
     }
 
-    private void assign(UUID projectId, UUID estimateId, ActivityView activity, UUID resourceId, BigDecimal quantity, WorkUnit workUnit) {
+    private AssignmentView assign(UUID projectId, UUID estimateId, ActivityView activity, UUID resourceId, BigDecimal quantity, WorkUnit workUnit) {
         BigDecimal days = activity.plannedDuration();
         boolean material = workUnit == null;
-        projects.assignResource(projectId, estimateId, activity.id(), new AssignmentRequest(
+        return projects.assignResource(projectId, estimateId, activity.id(), new AssignmentRequest(
                 resourceId, quantity, material ? BigDecimal.ZERO : days.multiply(BigDecimal.valueOf(8)).multiply(quantity), workUnit,
                 BigDecimal.valueOf(100), activity.plannedStartDate(), activity.plannedEndDate(), false,
                 PersonnelAssignmentType.DIRECT_LABOR, BigDecimal.valueOf(8), BigDecimal.ZERO,
