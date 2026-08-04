@@ -48,21 +48,27 @@ public class ProjectService {
     public EstimateView addEstimate(UUID projectId, EstimateRequest request) {
         Project project = requireProject(projectId); var estimate = new EstimateVersion(); estimate.setId(UUID.randomUUID());
         estimate.setName(request.name()); estimate.setDescription(request.description()); estimate.setVersionNumber(project.getEstimateVersions().size() + 1);
-        estimate.setStatus(EstimateStatus.DRAFT); estimate.setCreatedAt(LocalDateTime.now()); estimate.setProject(project); project.getEstimateVersions().add(estimate); return estimateView(estimate);
+        estimate.setStatus(EstimateStatus.DRAFT); estimate.setCreatedAt(LocalDateTime.now()); estimate.setProject(project); project.getEstimateVersions().add(estimate);
+        projects.save(project);
+        return estimateView(estimate);
     }
     public WbsView addWbs(UUID projectId, UUID estimateId, WbsRequest request) {
         EstimateVersion estimate = requireEstimate(projectId, estimateId); var wbs = new WbsItem(); wbs.setId(UUID.randomUUID());
         wbs.setCode(request.code()); wbs.setName(request.name()); wbs.setDescription(request.description()); wbs.setSequence(request.sequence() == null ? estimate.getWbsItems().size() + 1 : request.sequence());
         wbs.setEstimateVersion(estimate);
         if (request.parentId() != null) { var parent = requireWbs(estimate, request.parentId()); wbs.setParent(parent); parent.getChildren().add(wbs); }
-        estimate.getWbsItems().add(wbs); return wbsView(wbs);
+        estimate.getWbsItems().add(wbs);
+        projects.save(estimate.getProject());
+        return wbsView(wbs);
     }
     public ActivityView addActivity(UUID projectId, UUID estimateId, UUID wbsId, ActivityRequest request) {
         WbsItem wbs = requireWbs(requireEstimate(projectId, estimateId), wbsId); validateDates(request.plannedStartDate(), request.plannedEndDate());
         var a = new Activity(); a.setId(UUID.randomUUID()); a.setCode(request.code()); a.setName(request.name()); a.setDescription(request.description());
         a.setType(request.type() == null ? ActivityType.WORK : request.type()); a.setPlannedQuantity(request.plannedQuantity()); a.setQuantityUnit(request.quantityUnit());
         a.setPlannedDuration(request.plannedDuration()); a.setDurationUnit(request.durationUnit()); a.setPlannedStartDate(request.plannedStartDate()); a.setPlannedEndDate(request.plannedEndDate());
-        a.setWbsItem(wbs); wbs.getActivities().add(a); return activityView(a);
+        a.setWbsItem(wbs); wbs.getActivities().add(a);
+        projects.save(wbs.getEstimateVersion().getProject());
+        return activityView(a);
     }
     public ActivityView updateActivity(UUID projectId, UUID estimateId, UUID activityId, ActivityRequest request) {
         Activity activity = requireActivity(requireEstimate(projectId, estimateId), activityId);

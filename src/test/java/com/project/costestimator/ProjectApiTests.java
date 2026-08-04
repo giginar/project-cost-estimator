@@ -13,7 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@SpringBootTest
+@SpringBootTest(properties = "app.security.enabled=false")
 @AutoConfigureMockMvc
 class ProjectApiTests {
     @Autowired MockMvc mvc;
@@ -112,6 +112,41 @@ class ProjectApiTests {
                 {"code":"X","name":"Invalid","plannedStartDate":"2026-08-10","plannedEndDate":"2026-08-01","currencyCode":"TRY"}
                 """)).andExpect(status().isBadRequest()).andExpect(jsonPath("$.detail").value("End date cannot be before start date"));
     }
+
+    @Test
+    void seedsLargePortProjectForProjectSwitching() throws Exception {
+        JsonNode projects = mapper.readTree(mvc.perform(get("/api/v1/projects"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        JsonNode seededProject = projects.valueStream()
+                .filter(project -> "PORT-2027".equals(project.path("code").asText()))
+                .findFirst().orElseThrow();
+
+        JsonNode detail = mapper.readTree(mvc.perform(get("/api/v1/projects/{id}", seededProject.path("id").asText()))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        JsonNode wbsItems = detail.path("estimates").get(0).path("wbsItems");
+        int activityCount = wbsItems.valueStream().mapToInt(wbs -> wbs.path("activities").size()).sum();
+
+        assertThat(seededProject.path("name").asText()).isEqualTo("Aegean Deepwater Port Expansion");
+        assertThat(wbsItems.size()).isEqualTo(6);
+        assertThat(activityCount).isEqualTo(15);
+    }
+
+    @Test
+    void persistsCreatedProjectEstimateAndWbsForSubsequentReads() throws Exception {
+        String projectId = mapper.readTree(postJson("/api/v1/projects", """
+                {"code":"PERSIST-01","name":"Persistence check","plannedStartDate":"2028-01-01","plannedEndDate":"2028-03-31","currencyCode":"USD"}
+                """)).path("project").path("id").asText();
+        String estimateId = id(postJson("/api/v1/projects/" + projectId + "/estimates", "{\"name\":\"Baseline\"}"));
+        String wbsId = id(postJson("/api/v1/projects/" + projectId + "/estimates/" + estimateId + "/wbs-items", "{\"code\":\"1\",\"name\":\"Initial WBS\"}"));
+
+        mvc.perform(get("/api/v1/projects/{id}", projectId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.project.code").value("PERSIST-01"))
+                .andExpect(jsonPath("$.estimates[0].id").value(estimateId))
+                .andExpect(jsonPath("$.estimates[0].wbsItems[0].id").value(wbsId))
+                .andExpect(jsonPath("$.estimates[0].wbsItems[0].name").value("Initial WBS"));
+    }
+
     private String postJson(String url, String json) throws Exception { return mvc.perform(post(url).contentType(MediaType.APPLICATION_JSON).content(json)).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(); }
     private String id(String json) throws Exception { JsonNode node = mapper.readTree(json); assertThat(node.path("id").asText()).isNotBlank(); return node.path("id").asText(); }
 }

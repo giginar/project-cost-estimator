@@ -84,6 +84,77 @@ public class DemoDataInitializer implements ApplicationRunner {
         assign(projectId, estimateId, demobilization, truck.id(), new BigDecimal("2"), WorkUnit.EQUIPMENT_HOUR);
         projects.addCrew(projectId, estimateId, dredgerAssignment.id(), new CrewRequest(operator.id(), "Dredge operator", BigDecimal.ONE, BigDecimal.valueOf(8), true));
         projects.addStaff(projectId, estimateId, new StaffRequest(foreman.id(), "Project site manager", BigDecimal.ONE, BigDecimal.valueOf(50), LocalDate.of(2026, 8, 3), LocalDate.of(2026, 9, 26)));
+
+        seedDeepwaterPort(operator, surveyor, foreman, laborer, dredger, surveyBoat, excavator, truck, geotextile, fill, buoy, ppe);
+    }
+
+    private void seedDeepwaterPort(
+            ResourceView operator, ResourceView surveyor, ResourceView foreman, ResourceView laborer,
+            ResourceView dredger, ResourceView surveyBoat, ResourceView excavator, ResourceView truck,
+            ResourceView geotextile, ResourceView fill, ResourceView buoy, ResourceView ppe) {
+        var project = projects.create(new ProjectRequest(
+                "PORT-2027", "Aegean Deepwater Port Expansion",
+                "Large-scale deepwater port expansion including dredging, breakwaters, quay works and marine systems",
+                LocalDate.of(2027, 1, 12), LocalDate.of(2027, 11, 30), "USD", "en", ProjectStatus.ACTIVE, null, null));
+        UUID projectId = project.project().id();
+        UUID estimateId = projects.addEstimate(projectId, new EstimateRequest("Contract Baseline", "Approved construction baseline for the port expansion")).id();
+
+        var engineering = addWbs(projectId, estimateId, "1", "Engineering & Mobilization", 1);
+        var dredging = addWbs(projectId, estimateId, "2", "Capital Dredging", 2);
+        var breakwater = addWbs(projectId, estimateId, "3", "Breakwater Construction", 3);
+        var quay = addWbs(projectId, estimateId, "4", "Quay & Revetment Works", 4);
+        var marineSystems = addWbs(projectId, estimateId, "5", "Marine Systems", 5);
+        var handover = addWbs(projectId, estimateId, "6", "Testing & Handover", 6);
+
+        var detailedSurvey = addActivity(projectId, estimateId, new SeedActivity(engineering.id(), "1.1", "Detailed marine survey", ActivityType.WORK, "2027-01-12", "2027-01-30"));
+        var offshoreMobilization = addActivity(projectId, estimateId, new SeedActivity(engineering.id(), "1.2", "Offshore fleet mobilization", ActivityType.MOBILIZATION, "2027-01-25", "2027-02-14"));
+        var channelDredging = addActivity(projectId, estimateId, new SeedActivity(dredging.id(), "2.1", "Access channel dredging", ActivityType.WORK, "2027-02-10", "2027-05-20"));
+        var basinDredging = addActivity(projectId, estimateId, new SeedActivity(dredging.id(), "2.2", "Harbor basin dredging", ActivityType.WORK, "2027-03-15", "2027-06-30"));
+        var dredgedTransport = addActivity(projectId, estimateId, new SeedActivity(dredging.id(), "2.3", "Dredged material transport", ActivityType.WORK, "2027-02-15", "2027-07-05"));
+        var seabedPreparation = addActivity(projectId, estimateId, new SeedActivity(breakwater.id(), "3.1", "Breakwater seabed preparation", ActivityType.WORK, "2027-04-01", "2027-05-15"));
+        var coreRock = addActivity(projectId, estimateId, new SeedActivity(breakwater.id(), "3.2", "Core rock placement", ActivityType.WORK, "2027-05-01", "2027-08-20"));
+        var armorLayer = addActivity(projectId, estimateId, new SeedActivity(breakwater.id(), "3.3", "Armor layer installation", ActivityType.WORK, "2027-07-01", "2027-10-05"));
+        var quayExcavation = addActivity(projectId, estimateId, new SeedActivity(quay.id(), "4.1", "Quay foundation excavation", ActivityType.WORK, "2027-05-20", "2027-07-10"));
+        var gradedFill = addActivity(projectId, estimateId, new SeedActivity(quay.id(), "4.2", "Geotextile and graded fill", ActivityType.WORK, "2027-06-15", "2027-08-15"));
+        var quayBackfill = addActivity(projectId, estimateId, new SeedActivity(quay.id(), "4.3", "Quay backfilling", ActivityType.WORK, "2027-08-01", "2027-10-10"));
+        var navigationBuoys = addActivity(projectId, estimateId, new SeedActivity(marineSystems.id(), "5.1", "Navigation buoy installation", ActivityType.WORK, "2027-09-01", "2027-10-10"));
+        var finalSurvey = addActivity(projectId, estimateId, new SeedActivity(marineSystems.id(), "5.2", "Final hydrographic survey", ActivityType.WORK, "2027-10-15", "2027-11-05"));
+        var asBuilt = addActivity(projectId, estimateId, new SeedActivity(handover.id(), "6.1", "As-built verification", ActivityType.WORK, "2027-11-01", "2027-11-18"));
+        var demobilization = addActivity(projectId, estimateId, new SeedActivity(handover.id(), "6.2", "Fleet demobilization", ActivityType.DEMOBILIZATION, "2027-11-15", "2027-11-30"));
+
+        assign(projectId, estimateId, detailedSurvey, surveyor.id(), new BigDecimal("3"), WorkUnit.PERSON_HOUR);
+        assign(projectId, estimateId, detailedSurvey, surveyBoat.id(), new BigDecimal("2"), WorkUnit.EQUIPMENT_HOUR);
+        assign(projectId, estimateId, offshoreMobilization, foreman.id(), new BigDecimal("2"), WorkUnit.PERSON_DAY);
+        assign(projectId, estimateId, offshoreMobilization, truck.id(), new BigDecimal("5"), WorkUnit.EQUIPMENT_HOUR);
+        assign(projectId, estimateId, offshoreMobilization, ppe.id(), new BigDecimal("24"), null);
+        assign(projectId, estimateId, channelDredging, operator.id(), new BigDecimal("4"), WorkUnit.PERSON_HOUR);
+        var channelDredger = assign(projectId, estimateId, channelDredging, dredger.id(), new BigDecimal("2"), WorkUnit.EQUIPMENT_HOUR);
+        assign(projectId, estimateId, basinDredging, operator.id(), new BigDecimal("5"), WorkUnit.PERSON_HOUR);
+        assign(projectId, estimateId, basinDredging, dredger.id(), new BigDecimal("3"), WorkUnit.EQUIPMENT_HOUR);
+        assign(projectId, estimateId, dredgedTransport, truck.id(), new BigDecimal("8"), WorkUnit.EQUIPMENT_HOUR);
+        assign(projectId, estimateId, dredgedTransport, laborer.id(), new BigDecimal("4"), WorkUnit.PERSON_HOUR);
+        assign(projectId, estimateId, seabedPreparation, excavator.id(), new BigDecimal("2"), WorkUnit.EQUIPMENT_HOUR);
+        assign(projectId, estimateId, seabedPreparation, geotextile.id(), new BigDecimal("8500"), null);
+        assign(projectId, estimateId, coreRock, fill.id(), new BigDecimal("18500"), null);
+        assign(projectId, estimateId, coreRock, truck.id(), new BigDecimal("8"), WorkUnit.EQUIPMENT_HOUR);
+        assign(projectId, estimateId, armorLayer, fill.id(), new BigDecimal("9600"), null);
+        assign(projectId, estimateId, armorLayer, excavator.id(), new BigDecimal("3"), WorkUnit.EQUIPMENT_HOUR);
+        assign(projectId, estimateId, quayExcavation, dredger.id(), BigDecimal.ONE, WorkUnit.EQUIPMENT_HOUR);
+        assign(projectId, estimateId, quayExcavation, excavator.id(), new BigDecimal("2"), WorkUnit.EQUIPMENT_HOUR);
+        assign(projectId, estimateId, gradedFill, geotextile.id(), new BigDecimal("12000"), null);
+        assign(projectId, estimateId, gradedFill, fill.id(), new BigDecimal("14000"), null);
+        assign(projectId, estimateId, quayBackfill, fill.id(), new BigDecimal("22000"), null);
+        assign(projectId, estimateId, quayBackfill, truck.id(), new BigDecimal("10"), WorkUnit.EQUIPMENT_HOUR);
+        assign(projectId, estimateId, navigationBuoys, buoy.id(), new BigDecimal("18"), null);
+        assign(projectId, estimateId, navigationBuoys, surveyBoat.id(), BigDecimal.ONE, WorkUnit.EQUIPMENT_HOUR);
+        assign(projectId, estimateId, finalSurvey, surveyor.id(), new BigDecimal("3"), WorkUnit.PERSON_HOUR);
+        assign(projectId, estimateId, finalSurvey, surveyBoat.id(), new BigDecimal("2"), WorkUnit.EQUIPMENT_HOUR);
+        assign(projectId, estimateId, asBuilt, surveyor.id(), new BigDecimal("2"), WorkUnit.PERSON_HOUR);
+        assign(projectId, estimateId, demobilization, foreman.id(), new BigDecimal("2"), WorkUnit.PERSON_DAY);
+        assign(projectId, estimateId, demobilization, truck.id(), new BigDecimal("5"), WorkUnit.EQUIPMENT_HOUR);
+
+        projects.addCrew(projectId, estimateId, channelDredger.id(), new CrewRequest(operator.id(), "Lead dredge operator", new BigDecimal("2"), BigDecimal.valueOf(8), true));
+        projects.addStaff(projectId, estimateId, new StaffRequest(foreman.id(), "Marine construction manager", BigDecimal.ONE, BigDecimal.valueOf(75), LocalDate.of(2027, 1, 12), LocalDate.of(2027, 11, 30)));
     }
 
     private WbsView addWbs(UUID projectId, UUID estimateId, String code, String name, int sequence) {
