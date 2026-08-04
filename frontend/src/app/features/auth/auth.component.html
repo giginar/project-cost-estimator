@@ -1,0 +1,32 @@
+<main class="auth-page">
+  <section class="auth-intro">
+    <div class="brand"><span>CE</span><div><strong>Construct</strong><small>Cost Estimator</small></div></div>
+    <div class="intro-copy"><small>PROJECT COST CONTROL</small><h1>Plan resources.<br />Control every cost.</h1><p>A secure workspace for engineers, managers and administrators.</p></div>
+    <div class="role-list"><span><b>ENGINEER</b> Full planning and editing</span><span><b>MANAGER</b> View project and manage settings</span><span><b>ADMIN</b> Manage user access</span></div>
+  </section>
+  <section class="auth-panel">
+    <div class="auth-card">
+      <header>
+        <small>{{ mode() === 'login' ? 'WELCOME BACK' : mode() === 'register' ? 'CREATE ACCOUNT' : mode() === 'forgot' ? 'ACCOUNT RECOVERY' : 'NEW PASSWORD' }}</small>
+        <h2>{{ mode() === 'login' ? 'Sign in to your workspace' : mode() === 'register' ? 'Register with your email' : mode() === 'forgot' ? 'Reset your password' : 'Choose a new password' }}</h2>
+        <p>{{ mode() === 'login' ? 'Use your verified account to continue.' : mode() === 'register' ? 'New registrations receive view-only Manager access after email verification.' : mode() === 'forgot' ? 'We will send a one-time reset link to your verified email.' : 'The link can be used once and expires after 30 minutes.' }}</p>
+      </header>
+      @if (mode() === 'login' || mode() === 'register') {
+        <div class="mode-tabs"><button type="button" [class.active]="mode() === 'login'" (click)="switchMode('login')">Sign in</button><button type="button" [class.active]="mode() === 'register'" (click)="switchMode('register')">Register</button></div>
+      }
+      <form (submit)="$event.preventDefault(); submit()">
+        @if (mode() === 'register') { <label><span>Full name</span><input [value]="fullName()" (input)="fullName.set($any($event.target).value)" autocomplete="name" required /></label> }
+        @if (mode() !== 'reset') { <label><span>Email address</span><input type="email" [value]="email()" (input)="email.set($any($event.target).value)" autocomplete="email" required /></label> }
+        @if (mode() === 'login' || mode() === 'register' || mode() === 'reset') { <label><span>{{ mode() === 'reset' ? 'New password' : 'Password' }}</span><input type="password" minlength="10" [value]="password()" (input)="password.set($any($event.target).value)" [autocomplete]="mode() === 'login' ? 'current-password' : 'new-password'" required /></label> }
+        @if (mode() === 'reset') { <label><span>Confirm new password</span><input type="password" minlength="10" [value]="passwordConfirmation()" (input)="passwordConfirmation.set($any($event.target).value)" autocomplete="new-password" required /></label> }
+        @if (mode() === 'register' || mode() === 'reset') { <small class="password-note">Minimum 10 characters. Passwords are stored only as BCrypt hashes.</small> }
+        @if (mode() === 'login') { <button type="button" class="text-button" (click)="switchMode('forgot')">Forgot password?</button> }
+        @if (error()) { <p class="error">{{ error() }}</p> }
+        @if (message()) { <p class="message">{{ message() }}</p> }
+        <button class="submit" [disabled]="loading()">{{ loading() ? 'Please wait…' : mode() === 'login' ? 'Sign in' : mode() === 'register' ? 'Create account' : mode() === 'forgot' ? 'Send reset link' : 'Save new password' }}</button>
+        @if (mode() === 'forgot' || mode() === 'reset') { <button type="button" class="back-button" (click)="switchMode('login')">Back to sign in</button> }
+      </form>
+      <footer>{{ mode() === 'forgot' ? 'For security, the response is the same whether the email exists or not.' : 'Email verification is required before the first sign-in.' }}</footer>
+    </div>
+  </section>
+</main>

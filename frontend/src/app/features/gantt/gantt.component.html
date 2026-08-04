@@ -1,21 +1,36 @@
-<section class="gantt-card">
+<section class="gantt-card" [class.readonly]="readonly()">
   <div class="gantt-toolbar">
     <div><h2>{{ t('Activity timeline', 'Aktivite zaman çizelgesi') }}</h2><span>{{ filteredTasks().length }} {{ t('activities', 'aktivite') }}</span></div>
     <label class="search"><span>⌕</span><input #query type="search" [placeholder]="t('Search activities', 'Aktivitelerde ara')" (input)="search.set(query.value)" /></label>
     <div class="zoom" aria-label="Timeline zoom">
-      <button [class.active]="dayWidth() === 24" (click)="setZoom(24)">{{ t('Compact', 'Kompakt') }}</button>
-      <button [class.active]="dayWidth() === 34" (click)="setZoom(34)">{{ t('Week', 'Hafta') }}</button>
-      <button [class.active]="dayWidth() === 50" (click)="setZoom(50)">{{ t('Day', 'Gün') }}</button>
+      <button [class.active]="zoomMode() === 'day'" (click)="setZoom('day')">{{ t('Day', 'Gün') }}</button>
+      <button [class.active]="zoomMode() === 'week'" (click)="setZoom('week')">{{ t('Week', 'Hafta') }}</button>
+      <button [class.active]="zoomMode() === 'month'" (click)="setZoom('month')">{{ t('Month', 'Ay') }}</button>
     </div>
-    <button class="more" aria-label="More actions">•••</button>
+    <div class="column-actions" (pointerdown)="$event.stopPropagation()">
+      <button class="more" [class.active]="columnMenuOpen()" [attr.aria-expanded]="columnMenuOpen()" [attr.aria-label]="t('Table columns', 'Tablo sütunları')" (click)="toggleColumnMenu($event)">☷ {{ t('Columns', 'Sütunlar') }}</button>
+      @if (columnMenuOpen()) {
+        <div class="column-menu">
+          <small>{{ t('TABLE COLUMNS', 'TABLO SÜTUNLARI') }}</small>
+          @for (column of taskColumns; track column) {
+            <label><input type="checkbox" [checked]="columnVisible(column)" (change)="toggleColumn(column)" /> <span>{{ columnLabel(column) }}</span></label>
+          }
+          <p>{{ t('Drag a column edge to resize it.', 'Boyutlandırmak için sütun kenarını sürükleyin.') }}</p>
+        </div>
+      }
+    </div>
   </div>
 
-  <div class="interaction-hint"><span>↔</span> {{ t('Drag either end to adjust dates · Right-click a bar to add personnel, equipment or material', 'Tarihleri ayarlamak için uçları sürükleyin · Kaynak eklemek için bara sağ tıklayın') }}</div>
+  <div class="interaction-hint"><span>{{ readonly() ? '◉' : '↔' }}</span> {{ readonly() ? t('View-only schedule · Hover over a bar to see assigned resources and costs', 'Salt okunur program · Atanan kaynakları ve maliyetleri görmek için aktivitenin üzerine gelin') : t('Drag either end to adjust dates · Right-click a bar to add personnel, equipment or material', 'Tarihleri ayarlamak için uçları sürükleyin · Kaynak eklemek için bara sağ tıklayın') }}</div>
 
   <div class="gantt-scroll">
-    <div class="gantt-layout" [style.--timeline-width.px]="timelineWidth()" [style.--day-width.px]="dayWidth()">
+    <div class="gantt-layout" [class.month-zoom]="zoomMode() === 'month'" [style.--timeline-width.px]="timelineWidth()" [style.--day-width.px]="dayWidth()" [style.--task-panel-width.px]="taskPanelWidth()" [style.--task-columns]="taskGridColumns()">
       <div class="task-header">
-        <span>{{ t('ACTIVITY', 'AKTİVİTE') }}</span><span>{{ t('START', 'BAŞLANGIÇ') }}</span><span>{{ t('FINISH', 'BİTİŞ') }}</span><span>{{ t('DAYS', 'GÜN') }}</span>
+        @for (column of taskColumns; track column) {
+          @if (columnVisible(column)) {
+            <div class="column-heading"><span>{{ columnLabel(column) }}</span><button type="button" [attr.aria-label]="t('Resize column', 'Sütunu boyutlandır')" (pointerdown)="beginColumnResize($event, column)"></button></div>
+          }
+        }
       </div>
       <div class="timeline-header">
         <div class="month-row">
@@ -23,7 +38,7 @@
         </div>
         <div class="day-row">
           @for (day of days(); track day.date) {
-            <div [class.weekend]="day.weekend" [class.today]="isToday(day.date)"><small>{{ day.date | date:'EEE' }}</small><strong>{{ day.label }}</strong></div>
+            <div [class.weekend]="day.weekend" [class.today]="isToday(day.date)"><small>{{ weekdayLabel(day.date) }}</small><strong>{{ day.label }}</strong></div>
           }
         </div>
       </div>
@@ -33,10 +48,10 @@
           <div class="group-label"><span>⌄</span>{{ group }}</div>
           @for (task of tasksInGroup(group); track task.id) {
             <div class="task-row">
-              <div class="task-name"><span><strong>{{ task.name }}</strong><small>{{ task.code }}</small></span></div>
-              <time>{{ displayTask(task).start | date:'dd MMM' }}</time>
-              <time>{{ displayTask(task).end | date:'dd MMM' }}</time>
-              <b>{{ (barWidth(task) / dayWidth()) }}</b>
+              @if (columnVisible('activity')) { <div class="task-name"><span><strong>{{ task.name }}</strong><small>{{ task.code }}</small></span></div> }
+              @if (columnVisible('start')) { <time>{{ shortDate(displayTask(task).start) }}</time> }
+              @if (columnVisible('finish')) { <time>{{ shortDate(displayTask(task).end) }}</time> }
+              @if (columnVisible('days')) { <b>{{ (barWidth(task) / dayWidth()) }}</b> }
             </div>
           }
         }
@@ -51,11 +66,11 @@
           @for (task of tasksInGroup(group); track task.id) {
             <div class="bar-row">
               <div class="task-bar" [class.resizing]="drag()?.task?.id === task.id" [style.left.px]="barLeft(task)" [style.width.px]="barWidth(task)" (contextmenu)="openResourceDialog($event, task)">
-                <button class="resize-handle start" aria-label="Change start date" (pointerdown)="beginResize($event, task, 'start')"></button>
+                @if (!readonly()) { <button class="resize-handle start" aria-label="Change start date" (pointerdown)="beginResize($event, task, 'start')"></button> }
                 <span>{{ task.name }}</span>
-                <button class="resize-handle end" aria-label="Change finish date" (pointerdown)="beginResize($event, task, 'end')"></button>
+                @if (!readonly()) { <button class="resize-handle end" aria-label="Change finish date" (pointerdown)="beginResize($event, task, 'end')"></button> }
                 @if (drag()?.task?.id === task.id) {
-                  <div class="date-popover">{{ displayTask(task).start | date:'dd MMM' }} — {{ displayTask(task).end | date:'dd MMM' }}</div>
+                  <div class="date-popover">{{ shortDate(displayTask(task).start) }} — {{ shortDate(displayTask(task).end) }}</div>
                 }
                 <div class="resource-tooltip">
                   <header><strong>{{ task.name }}</strong><small>{{ task.assignments.length }} {{ t('assigned resources', 'atanmış kaynak') }}</small></header>

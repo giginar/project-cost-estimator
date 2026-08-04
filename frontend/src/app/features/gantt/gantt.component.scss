@@ -10,3 +10,30 @@
 @media (max-width: 1050px) { .gantt-toolbar { flex-wrap: wrap; padding-block: 12px; }.search { order: 3; width: 100%; }.search input { width: 100%; } }
 @media (max-width: 850px) { .resource-columns { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 620px) { .resource-columns { grid-template-columns: 1fr; } }
+
+/* Timeline scale and configurable task-table columns */
+.gantt-toolbar { position: relative; z-index: 50; }
+.column-actions { position: relative; }
+.more { min-width: 38px; cursor: pointer; }
+.more.active { color: #168f85; border-color: #80c4be; background: #f0faf8; }
+.column-menu { position: absolute; z-index: 60; top: calc(100% + 8px); right: 0; width: 210px; padding: 13px; border: 1px solid #dce5e9; border-radius: 8px; background: white; box-shadow: 0 12px 35px #1833482e; }
+.column-menu > small { display: block; margin-bottom: 8px; color: #8797a1; font-size: 8px; font-weight: 800; letter-spacing: .12em; }
+.column-menu label { display: flex; align-items: center; gap: 8px; padding: 7px 5px; color: #405868; font-size: 10px; cursor: pointer; }
+.column-menu input { accent-color: #168f85; }
+.column-menu p { margin: 8px 5px 2px; color: #91a0aa; font-size: 8px; line-height: 1.4; }
+
+.gantt-layout { min-width: calc(var(--task-panel-width) + var(--timeline-width)); grid-template-columns: var(--task-panel-width) var(--timeline-width); }
+.task-header, .task-row { grid-template-columns: var(--task-columns); }
+.task-header { padding-bottom: 11px; }
+.column-heading { position: relative; min-width: 0; }
+.column-heading span { display: block; overflow: hidden; padding-left: 14px; color: #8a99a4; font-size: 8px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; white-space: nowrap; text-overflow: ellipsis; }
+.column-heading button { position: absolute; z-index: 2; top: -38px; right: -4px; bottom: -11px; width: 9px; padding: 0; border: 0; background: transparent; cursor: col-resize; touch-action: none; }
+.column-heading button::after { content: ''; position: absolute; top: 7px; bottom: 7px; left: 4px; width: 1px; background: #d5dfe4; transition: background .15s, width .15s; }
+.column-heading button:hover::after { width: 2px; background: #159b91; }
+.task-body { overflow: hidden; }
+.group-label { overflow: hidden; white-space: nowrap; }
+.task-row > * { min-width: 0; overflow: hidden; white-space: nowrap; }
+.month-row div { overflow: hidden; white-space: nowrap; }
+.month-zoom .day-row small { display: none; }
+.month-zoom .day-row strong { font-size: 7px; }
+.month-zoom .day-row .today strong { width: 11px; height: 18px; border-radius: 3px; }

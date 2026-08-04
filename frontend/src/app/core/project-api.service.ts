@@ -9,6 +9,9 @@ interface WbsView { id: string; code: string; name: string; activities: Activity
 interface EstimateView { id: string; wbsItems: WbsView[]; }
 interface ProjectDetail { project: ProjectSummary; estimates: EstimateView[]; }
 export interface WbsOption { id: string; code: string; name: string; }
+export interface ProjectOption { id: string; code: string; name: string; }
+export interface NewProject { code: string; name: string; description: string; start: string; end: string; currencyCode: 'USD' | 'TRY' | 'EUR'; wbsCode: string; wbsName: string; }
+export interface NewWbs { code: string; name: string; description: string; }
 export interface NewActivity { wbsId: string; code: string; name: string; type: string; start: string; end: string; }
 export interface ProjectSettings { code: string; name: string; description: string; start: string; end: string; currencyCode: 'USD' | 'TRY' | 'EUR'; usdTryRate: number | null; eurTryRate: number | null; status: string; }
 export interface NewCostRate { resourceId: string; category: string; name: string; calculationBasis: string; unitPrice: number; unit: string; }
@@ -18,9 +21,14 @@ export interface ScheduleData { projectId: string; estimateId: string; projectCo
 export class ProjectApiService {
   constructor(private readonly http: HttpClient) {}
 
-  loadSchedule(): Observable<ScheduleData | null> {
+  listProjects(): Observable<ProjectOption[]> { return this.http.get<ProjectSummary[]>('/api/v1/projects').pipe(map(projects => projects.map(({ id, code, name }) => ({ id, code, name })))); }
+
+  loadSchedule(projectId?: string): Observable<ScheduleData | null> {
     return this.http.get<ProjectSummary[]>('/api/v1/projects').pipe(
-      switchMap(projects => projects.length ? this.http.get<ProjectDetail>(`/api/v1/projects/${projects[0].id}`) : of(null)),
+      switchMap(projects => {
+        const project = projectId ? projects.find(item => item.id === projectId) : projects[0];
+        return project ? this.http.get<ProjectDetail>(`/api/v1/projects/${project.id}`) : of(null);
+      }),
       map(detail => {
         if (!detail) return null;
         const estimate = detail.estimates.at(-1); if (!estimate) return null;
@@ -35,6 +43,24 @@ export class ProjectApiService {
         return { projectId: detail.project.id, estimateId: estimate.id, projectCode: detail.project.code, projectName: detail.project.name, projectDescription: detail.project.description ?? '', projectStatus: detail.project.status, projectStart: detail.project.plannedStartDate, projectEnd: detail.project.plannedEndDate, currencyCode: detail.project.currency || 'USD', languageCode: detail.project.languageCode || 'en', usdTryRate: detail.project.usdTryRate, eurTryRate: detail.project.eurTryRate, tasks, activities, wbsItems };
       }),
     );
+  }
+
+  createProject(input: NewProject, languageCode: 'en' | 'tr'): Observable<ScheduleData> {
+    return this.http.post<ProjectDetail>('/api/v1/projects', {
+      code: input.code, name: input.name, description: input.description, plannedStartDate: input.start, plannedEndDate: input.end,
+      currencyCode: input.currencyCode, languageCode, status: 'DRAFT', usdTryRate: null, eurTryRate: null,
+    }).pipe(
+      switchMap(detail => this.http.post<EstimateView>(`/api/v1/projects/${detail.project.id}/estimates`, { name: 'Baseline Estimate', description: 'Initial project estimate' }).pipe(map(estimate => ({ projectId: detail.project.id, estimateId: estimate.id })))),
+      switchMap(context => this.http.post<WbsView>(`/api/v1/projects/${context.projectId}/estimates/${context.estimateId}/wbs-items`, { code: input.wbsCode, name: input.wbsName, description: null, sequence: 1, parentId: null }).pipe(map(() => context))),
+      switchMap(context => this.loadSchedule(context.projectId)),
+      map(schedule => { if (!schedule) throw new Error('Created project could not be loaded'); return schedule; }),
+    );
+  }
+
+  addWbs(context: ScheduleData, input: NewWbs): Observable<WbsOption> {
+    return this.http.post<WbsView>(`/api/v1/projects/${context.projectId}/estimates/${context.estimateId}/wbs-items`, {
+      code: input.code, name: input.name, description: input.description, sequence: context.wbsItems.length + 1, parentId: null,
+    }).pipe(map(({ id, code, name }) => ({ id, code, name })));
   }
 
   updateDates(context: ScheduleData, task: GanttTask): Observable<ActivityView> {

@@ -7,20 +7,33 @@ import { ProjectOverviewComponent } from './features/project/project-overview.co
 import { ProjectReportComponent } from './features/project/project-report.component';
 import { CostLibraryComponent } from './features/cost-library/cost-library.component';
 import { ProjectSettingsComponent } from './features/settings/project-settings.component';
-import { NewActivity, NewCostRate, ProjectApiService, ProjectSettings, ScheduleData, WbsOption } from './core/project-api.service';
+import { NewActivity, NewCostRate, NewProject, NewWbs, ProjectApiService, ProjectOption, ProjectSettings, ScheduleData, WbsOption } from './core/project-api.service';
+import { AuthService, AuthUser } from './core/auth.service';
+import { AuthComponent } from './features/auth/auth.component';
+import { UserAdminComponent } from './features/admin/user-admin.component';
 
 @Component({
   selector: 'app-root',
-  imports: [GanttComponent, ResourceCatalogComponent, ProjectOverviewComponent, ProjectReportComponent, CostLibraryComponent, ProjectSettingsComponent],
+  imports: [GanttComponent, ResourceCatalogComponent, ProjectOverviewComponent, ProjectReportComponent, CostLibraryComponent, ProjectSettingsComponent, AuthComponent, UserAdminComponent],
   templateUrl: './app.html',
-  styleUrl: './app.scss',
+  styleUrls: ['./app.scss', './app-extra.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class App implements OnInit {
   private readonly api = inject(ProjectApiService);
+  protected readonly auth = inject(AuthService);
   protected scheduleContext: ScheduleData | null = null;
   protected readonly sidebarCollapsed = signal(false);
   protected readonly currentPage = signal<'overview' | 'schedule' | 'cost-library' | 'report' | 'settings' | ResourceType>('schedule');
+  protected readonly projects = signal<ProjectOption[]>([]);
+  protected readonly projectMenuOpen = signal(false);
+  protected readonly newProjectDialogOpen = signal(false);
+  protected readonly wbsDialogOpen = signal(false);
+  protected readonly projectCreating = signal(false);
+  protected readonly wbsCreating = signal(false);
+  protected readonly projectActionError = signal('');
+  protected readonly newProjectDraft = signal<NewProject>({ code: '', name: '', description: '', start: '', end: '', currencyCode: 'USD', wbsCode: '1', wbsName: '' });
+  protected readonly newWbsDraft = signal<NewWbs>({ code: '', name: '', description: '' });
   protected readonly language = signal<'en' | 'tr'>('en');
   protected readonly projectCode = signal('MAR-001');
   protected readonly projectStatus = signal('DRAFT');
@@ -52,12 +65,45 @@ export class App implements OnInit {
   protected readonly activityDraft = signal<NewActivity>({ wbsId: '', code: '', name: '', type: 'WORK', start: '', end: '' });
 
   ngOnInit(): void {
-    this.api.loadSchedule().pipe(retry({ count: 15, delay: 1000 }), catchError(() => of(null))).subscribe(schedule => {
-      if (!schedule) return;
-      this.scheduleContext = schedule; this.projectCode.set(schedule.projectCode); this.projectName.set(schedule.projectName); this.projectDescription.set(schedule.projectDescription); this.projectStatus.set(schedule.projectStatus); this.projectStart.set(schedule.projectStart); this.projectEnd.set(schedule.projectEnd); this.currencyCode.set(schedule.currencyCode); this.usdTryRate.set(schedule.usdTryRate); this.eurTryRate.set(schedule.eurTryRate); this.language.set(schedule.languageCode); this.tasks.set(schedule.tasks); this.wbsItems.set(schedule.wbsItems);
-    });
+    const authParameters = new URLSearchParams(location.search);
+    if (authParameters.has('verify') || authParameters.has('reset')) { this.auth.logout(); return; }
+    this.auth.restore().subscribe(user => { if (user && user.role !== 'ADMIN') this.loadProjectData(); });
+  }
+
+  protected onAuthenticated(user: AuthUser): void {
+    this.currentPage.set(user.role === 'MANAGER' ? 'overview' : 'schedule');
+    if (user.role !== 'ADMIN') this.loadProjectData();
+  }
+
+  protected logout(): void { this.auth.logout(); this.scheduleContext = null; this.resources.set([]); }
+  protected isEngineer(): boolean { return this.auth.user()?.role === 'ENGINEER'; }
+  protected initials(): string { return this.auth.user()?.fullName.split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase() ?? ''; }
+
+  private loadProjectData(projectId?: string): void {
+    this.api.listProjects().pipe(retry({ count: 15, delay: 1000 }), catchError(() => of([]))).subscribe(projects => this.projects.set(projects));
+    this.api.loadSchedule(projectId).pipe(retry({ count: 15, delay: 1000 }), catchError(() => of(null))).subscribe(schedule => { if (schedule) this.applySchedule(schedule); });
     this.api.listResources().pipe(retry({ count: 15, delay: 1000 }), catchError(() => of([]))).subscribe(resources => this.resources.set(resources));
   }
+
+  protected switchProject(projectId: string): void { if (projectId === this.scheduleContext?.projectId) { this.projectMenuOpen.set(false); return; } this.projectMenuOpen.set(false); this.tasks.set([]); this.wbsItems.set([]); this.loadProjectData(projectId); }
+  protected openNewProjectDialog(): void { const start = this.iso(new Date()); const end = new Date(); end.setMonth(end.getMonth() + 1); this.newProjectDraft.set({ code: '', name: '', description: '', start, end: this.iso(end), currencyCode: this.currencyCode() as NewProject['currencyCode'], wbsCode: '1', wbsName: '' }); this.projectActionError.set(''); this.projectMenuOpen.set(false); this.newProjectDialogOpen.set(true); }
+  protected openWbsDialog(): void { this.newWbsDraft.set({ code: String(this.wbsItems().length + 1), name: '', description: '' }); this.projectActionError.set(''); this.projectMenuOpen.set(false); this.wbsDialogOpen.set(true); }
+  protected updateNewProject(field: keyof NewProject, value: string): void { this.newProjectDraft.update(draft => ({ ...draft, [field]: value })); }
+  protected updateNewWbs(field: keyof NewWbs, value: string): void { this.newWbsDraft.update(draft => ({ ...draft, [field]: value })); }
+  protected createProject(): void {
+    const draft = this.newProjectDraft(); this.projectActionError.set('');
+    if (!draft.code.trim() || !draft.name.trim() || !draft.start || !draft.end || draft.end < draft.start || !draft.wbsCode.trim() || !draft.wbsName.trim()) { this.projectActionError.set('Complete the project dates and the initial WBS fields.'); return; }
+    this.projectCreating.set(true);
+    this.api.createProject(draft, this.language()).pipe(finalize(() => this.projectCreating.set(false))).subscribe({ next: schedule => { this.applySchedule(schedule); this.api.listProjects().subscribe(projects => this.projects.set(projects)); this.newProjectDialogOpen.set(false); this.currentPage.set('schedule'); }, error: error => this.projectActionError.set(error.error?.detail ?? 'Project could not be created.') });
+  }
+  protected createWbs(): void {
+    const draft = this.newWbsDraft(); this.projectActionError.set('');
+    if (!this.scheduleContext || !draft.code.trim() || !draft.name.trim()) { this.projectActionError.set('Enter a WBS code and name.'); return; }
+    this.wbsCreating.set(true);
+    this.api.addWbs(this.scheduleContext, draft).pipe(finalize(() => this.wbsCreating.set(false))).subscribe({ next: wbs => { this.wbsItems.update(items => [...items, wbs]); this.scheduleContext!.wbsItems.push(wbs); this.wbsDialogOpen.set(false); }, error: error => this.projectActionError.set(error.error?.detail ?? 'WBS could not be added.') });
+  }
+
+  private applySchedule(schedule: ScheduleData): void { this.scheduleContext = schedule; this.projectCode.set(schedule.projectCode); this.projectName.set(schedule.projectName); this.projectDescription.set(schedule.projectDescription); this.projectStatus.set(schedule.projectStatus); this.projectStart.set(schedule.projectStart); this.projectEnd.set(schedule.projectEnd); this.currencyCode.set(schedule.currencyCode); this.usdTryRate.set(schedule.usdTryRate); this.eurTryRate.set(schedule.eurTryRate); this.language.set(schedule.languageCode); this.tasks.set(schedule.tasks); this.wbsItems.set(schedule.wbsItems); }
 
   protected updateTask(updated: GanttTask): void {
     this.tasks.update(tasks => tasks.map(task => task.id === updated.id ? updated : task));

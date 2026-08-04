@@ -1,3 +1,8 @@
+@if (!auth.user()) {
+  <app-auth (authenticated)="onAuthenticated($event)" />
+} @else if (auth.user()!.role === 'ADMIN') {
+  <app-user-admin />
+} @else {
 <div class="app-shell" [class.sidebar-collapsed]="sidebarCollapsed()">
   <aside class="sidebar">
     <div class="brand">
@@ -7,22 +12,35 @@
     <nav aria-label="Main navigation">
       <a [class.active]="currentPage() === 'overview'" (click)="currentPage.set('overview')"><span class="nav-icon">⌂</span><span>{{ t('Overview', 'Genel Bakış') }}</span></a>
       <a [class.active]="currentPage() === 'schedule'" (click)="currentPage.set('schedule')"><span class="nav-icon">▤</span><span>{{ t('Schedule', 'İş Programı') }}</span></a>
-      <a [class.active]="currentPage() === 'personnel'" (click)="currentPage.set('personnel')"><span class="nav-icon">♙</span><span>{{ t('Personnel', 'Personel') }}</span></a>
-      <a [class.active]="currentPage() === 'equipment'" (click)="currentPage.set('equipment')"><span class="nav-icon">◇</span><span>{{ t('Equipment', 'Ekipman') }}</span></a>
-      <a [class.active]="currentPage() === 'material'" (click)="currentPage.set('material')"><span class="nav-icon">▧</span><span>{{ t('Material', 'Malzeme') }}</span></a>
-      <a [class.active]="currentPage() === 'cost-library'" (click)="currentPage.set('cost-library')"><span class="nav-icon">◫</span><span>{{ t('Cost library', 'Maliyet Kütüphanesi') }}</span></a>
+      @if (isEngineer()) {
+        <a [class.active]="currentPage() === 'personnel'" (click)="currentPage.set('personnel')"><span class="nav-icon">♙</span><span>{{ t('Personnel', 'Personel') }}</span></a>
+        <a [class.active]="currentPage() === 'equipment'" (click)="currentPage.set('equipment')"><span class="nav-icon">◇</span><span>{{ t('Equipment', 'Ekipman') }}</span></a>
+        <a [class.active]="currentPage() === 'material'" (click)="currentPage.set('material')"><span class="nav-icon">▧</span><span>{{ t('Material', 'Malzeme') }}</span></a>
+        <a [class.active]="currentPage() === 'cost-library'" (click)="currentPage.set('cost-library')"><span class="nav-icon">◫</span><span>{{ t('Cost library', 'Maliyet Kütüphanesi') }}</span></a>
+      }
       <a [class.active]="currentPage() === 'report'" (click)="currentPage.set('report')"><span class="nav-icon">↗</span><span>{{ t('Reports', 'Raporlar') }}</span></a>
     </nav>
     <div class="sidebar-footer">
       <a [class.active]="currentPage() === 'settings'" (click)="currentPage.set('settings')"><span class="nav-icon">⚙</span><span>{{ t('Project settings', 'Proje Ayarları') }}</span></a>
-      <div class="user"><span>YK</span><p><strong>Yigit Kaya</strong><small>Project manager</small></p></div>
+      <div class="user"><span>{{ initials() }}</span><p><strong>{{ auth.user()!.fullName }}</strong><small>{{ auth.user()!.role === 'ENGINEER' ? 'Project engineer' : 'Project manager' }}</small></p><button class="logout-button" (click)="logout()">↪</button></div>
     </div>
   </aside>
 
   <main>
     <header class="topbar">
       <button class="icon-button" (click)="sidebarCollapsed.set(!sidebarCollapsed())" aria-label="Toggle navigation">☰</button>
-      <div class="project-picker"><small>{{ t('PROJECT', 'PROJE') }}</small><strong>{{ projectName() }}</strong><span>⌄</span></div>
+      <div class="project-picker-wrap">
+        <button class="project-picker" (click)="projectMenuOpen.set(!projectMenuOpen())"><small>{{ t('PROJECT', 'PROJE') }}</small><strong>{{ projectName() }}</strong><span>⌄</span></button>
+        @if (projectMenuOpen()) {
+          <div class="project-menu">
+            <header><small>{{ t('SWITCH PROJECT', 'PROJE DEĞİŞTİR') }}</small><span>{{ projects().length }}</span></header>
+            <div class="project-list">
+              @for (project of projects(); track project.id) { <button [class.active]="project.id === scheduleContext?.projectId" (click)="switchProject(project.id)"><span><strong>{{ project.name }}</strong><small>{{ project.code }}</small></span>@if (project.id === scheduleContext?.projectId) { <b>✓</b> }</button> }
+            </div>
+            @if (isEngineer()) { <footer><button (click)="openNewProjectDialog()">＋ {{ t('Create new project', 'Yeni proje oluştur') }}</button><button [disabled]="!scheduleContext" (click)="openWbsDialog()">＋ {{ t('Add WBS to current project', 'Aktif projeye WBS ekle') }}</button></footer> }
+          </div>
+        }
+      </div>
       <div class="top-actions"><button class="icon-button" aria-label="Notifications">◌</button><button class="share-button">{{ t('Share project', 'Projeyi paylaş') }}</button></div>
     </header>
 
@@ -33,10 +51,10 @@
       <div class="project-window-bar">
         <span class="summary-icon blue">◫</span>
         <div><small>{{ t('PROJECT WINDOW', 'PROJE TARİH ARALIĞI') }}</small><strong>{{ formatDate(projectStart()) }} · {{ formatDate(projectEnd()) }}</strong><p>{{ tasks().length }} {{ t('scheduled activities', 'planlanmış aktivite') }}</p></div>
-        <button class="primary-button" (click)="openActivityDialog()">＋ {{ t('Add activity', 'Aktivite ekle') }}</button>
+        @if (isEngineer()) { <button class="primary-button" (click)="openActivityDialog()">＋ {{ t('Add activity', 'Aktivite ekle') }}</button> }
       </div>
 
-      <app-gantt [tasks]="tasks()" [resources]="resources()" [currency]="currencyCode()" [language]="language()" (taskChange)="updateTask($event)" (resourcesAdd)="addResources($event)" />
+      <app-gantt [tasks]="tasks()" [resources]="resources()" [currency]="currencyCode()" [language]="language()" [readonly]="!isEngineer()" (taskChange)="updateTask($event)" (resourcesAdd)="addResources($event)" />
     </section>
     } @else if (currentPage() === 'cost-library') {
       <section class="content"><app-cost-library [resources]="resources()" [currency]="currencyCode()" [language]="language()" (costCreate)="createCost($event)" /></section>
@@ -72,4 +90,41 @@
       </form>
     </section>
   </div>
+}
+
+@if (newProjectDialogOpen()) {
+  <div class="activity-dialog-backdrop" (mousedown)="!projectCreating() && newProjectDialogOpen.set(false)">
+    <section class="activity-dialog project-dialog" (mousedown)="$event.stopPropagation()">
+      <header><div><small>PROJECT PORTFOLIO</small><h2>{{ t('Create new project', 'Yeni proje oluştur') }}</h2><p>{{ t('Every project starts with a baseline estimate and its first WBS.', 'Her proje bir başlangıç keşfi ve ilk WBS kalemiyle oluşturulur.') }}</p></div><button (click)="newProjectDialogOpen.set(false)">×</button></header>
+      <form (submit)="$event.preventDefault(); createProject()">
+        <label><span>{{ t('Project code', 'Proje kodu') }} *</span><input [value]="newProjectDraft().code" (input)="updateNewProject('code', $any($event.target).value)" required /></label>
+        <label><span>{{ t('Currency', 'Para birimi') }} *</span><select [value]="newProjectDraft().currencyCode" (change)="updateNewProject('currencyCode', $any($event.target).value)"><option value="USD">USD</option><option value="EUR">EUR</option><option value="TRY">TRY</option></select></label>
+        <label class="wide"><span>{{ t('Project name', 'Proje adı') }} *</span><input [value]="newProjectDraft().name" (input)="updateNewProject('name', $any($event.target).value)" required /></label>
+        <label class="wide"><span>{{ t('Description', 'Açıklama') }}</span><input [value]="newProjectDraft().description" (input)="updateNewProject('description', $any($event.target).value)" /></label>
+        <label><span>{{ t('Start date', 'Başlangıç tarihi') }} *</span><input type="date" [value]="newProjectDraft().start" (input)="updateNewProject('start', $any($event.target).value)" required /></label>
+        <label><span>{{ t('Finish date', 'Bitiş tarihi') }} *</span><input type="date" [value]="newProjectDraft().end" [min]="newProjectDraft().start" (input)="updateNewProject('end', $any($event.target).value)" required /></label>
+        <div class="dialog-section-title wide"><span>INITIAL WBS</span><p>{{ t('Add the first scope branch for this project.', 'Projenin ilk kapsam kırılımını ekleyin.') }}</p></div>
+        <label><span>WBS {{ t('code', 'kodu') }} *</span><input [value]="newProjectDraft().wbsCode" (input)="updateNewProject('wbsCode', $any($event.target).value)" required /></label>
+        <label><span>WBS {{ t('name', 'adı') }} *</span><input [value]="newProjectDraft().wbsName" (input)="updateNewProject('wbsName', $any($event.target).value)" required /></label>
+        @if (projectActionError()) { <p class="activity-error">{{ projectActionError() }}</p> }
+        <footer><button type="button" class="cancel" (click)="newProjectDialogOpen.set(false)">{{ t('Cancel', 'İptal') }}</button><button class="save" [disabled]="projectCreating()">{{ projectCreating() ? t('Creating…', 'Oluşturuluyor…') : t('Create project', 'Projeyi oluştur') }}</button></footer>
+      </form>
+    </section>
+  </div>
+}
+
+@if (wbsDialogOpen()) {
+  <div class="activity-dialog-backdrop" (mousedown)="!wbsCreating() && wbsDialogOpen.set(false)">
+    <section class="activity-dialog wbs-dialog" (mousedown)="$event.stopPropagation()">
+      <header><div><small>{{ projectCode() }} · WBS</small><h2>{{ t('Add WBS', 'WBS ekle') }}</h2><p>{{ t('Add another scope branch to the active project.', 'Aktif projeye yeni bir kapsam kırılımı ekleyin.') }}</p></div><button (click)="wbsDialogOpen.set(false)">×</button></header>
+      <form (submit)="$event.preventDefault(); createWbs()">
+        <label><span>WBS {{ t('code', 'kodu') }} *</span><input [value]="newWbsDraft().code" (input)="updateNewWbs('code', $any($event.target).value)" required /></label>
+        <label><span>WBS {{ t('name', 'adı') }} *</span><input [value]="newWbsDraft().name" (input)="updateNewWbs('name', $any($event.target).value)" required /></label>
+        <label class="wide"><span>{{ t('Description', 'Açıklama') }}</span><input [value]="newWbsDraft().description" (input)="updateNewWbs('description', $any($event.target).value)" /></label>
+        @if (projectActionError()) { <p class="activity-error">{{ projectActionError() }}</p> }
+        <footer><button type="button" class="cancel" (click)="wbsDialogOpen.set(false)">{{ t('Cancel', 'İptal') }}</button><button class="save" [disabled]="wbsCreating()">{{ wbsCreating() ? t('Saving…', 'Kaydediliyor…') : t('Add WBS', 'WBS ekle') }}</button></footer>
+      </form>
+    </section>
+  </div>
+}
 }

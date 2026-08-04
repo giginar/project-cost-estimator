@@ -1,0 +1,23 @@
+.project-picker-wrap { position: relative; border-left: 1px solid #e4e9ed; padding-left: 20px; }
+.project-picker-wrap .project-picker { min-width: 260px; padding: 0; border: 0; background: transparent; text-align: left; }
+.project-menu { position: absolute; z-index: 90; top: calc(100% + 15px); left: 20px; width: 350px; overflow: hidden; border: 1px solid #dce5e9; border-radius: 10px; background: white; box-shadow: 0 18px 45px #1833482c; }
+.project-menu > header { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; border-bottom: 1px solid #e5ebee; background: #f8fafb; }
+.project-menu > header small { color: #738894; font-size: 8px; font-weight: 800; letter-spacing: .12em; }
+.project-menu > header span { min-width: 21px; height: 21px; display: grid; place-items: center; border-radius: 11px; background: #e6f4f2; color: #168f86; font-size: 8px; font-weight: 800; }
+.project-list { max-height: 255px; overflow: auto; padding: 7px; }
+.project-list > button { width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 10px; border: 0; border-radius: 7px; background: transparent; text-align: left; cursor: pointer; }
+.project-list > button:hover, .project-list > button.active { background: #eff8f6; }
+.project-list button span { display: grid; }
+.project-list strong { color: #294254; font-size: 10px; }
+.project-list small { margin-top: 3px; color: #8c9ba5; font-size: 8px; }
+.project-list b { color: #168f86; }
+.project-menu > footer { display: grid; gap: 5px; padding: 8px; border-top: 1px solid #e5ebee; background: #fbfcfc; }
+.project-menu > footer button { padding: 9px 10px; border: 0; border-radius: 6px; background: transparent; color: #168f86; font: 700 9px var(--font); text-align: left; cursor: pointer; }
+.project-menu > footer button:hover { background: #eaf6f4; }
+.project-menu > footer button:disabled { opacity: .45; cursor: default; }
+.project-dialog { width: min(690px, 100%); }
+.wbs-dialog { width: min(560px, 100%); }
+.dialog-section-title { padding: 11px 12px; border: 1px solid #dce9e6; border-radius: 7px; background: #f2faf8; }
+.dialog-section-title span { color: #168f86; font-size: 8px; font-weight: 800; letter-spacing: .12em; }
+.dialog-section-title p { margin: 3px 0 0; color: #718c88; font-size: 8px; }
+@media (max-width: 720px) { .project-picker-wrap .project-picker { min-width: 190px; }.project-menu { width: min(350px, 78vw); } }

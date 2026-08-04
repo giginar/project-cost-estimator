@@ -1,9 +1,11 @@
 import { ChangeDetectionStrategy, Component, HostListener, computed, input, output, signal } from '@angular/core';
-import { DatePipe } from '@angular/common';
 import { ActivityResource, GanttTask, ResourceSelection } from './gantt.models';
 
 type ResizeEdge = 'start' | 'end';
+type ZoomMode = 'month' | 'week' | 'day';
+type TaskColumn = 'activity' | 'start' | 'finish' | 'days';
 interface DragState { task: GanttTask; edge: ResizeEdge; originX: number; draft: GanttTask; }
+interface ColumnResizeState { column: TaskColumn; originX: number; originWidth: number; }
 interface TimelineCell { date: Date; label: string; weekend: boolean; }
 interface MonthBand { label: string; days: number; }
 
@@ -11,7 +13,7 @@ const DAY_MS = 86_400_000;
 
 @Component({
   selector: 'app-gantt',
-  imports: [DatePipe],
+  imports: [],
   templateUrl: './gantt.component.html',
   styleUrl: './gantt.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -21,10 +23,17 @@ export class GanttComponent {
   readonly resources = input<ActivityResource[]>([]);
   readonly currency = input('USD');
   readonly language = input<'en' | 'tr'>('en');
+  readonly readonly = input(false);
   readonly taskChange = output<GanttTask>();
   readonly resourcesAdd = output<ResourceSelection>();
-  protected readonly dayWidth = signal(34);
+  protected readonly taskColumns: TaskColumn[] = ['activity', 'start', 'finish', 'days'];
+  protected readonly zoomMode = signal<ZoomMode>('week');
+  protected readonly dayWidth = computed(() => ({ month: 12, week: 34, day: 50 })[this.zoomMode()]);
   protected readonly drag = signal<DragState | null>(null);
+  protected readonly columnResize = signal<ColumnResizeState | null>(null);
+  protected readonly columnMenuOpen = signal(false);
+  protected readonly visibleColumns = signal<Record<TaskColumn, boolean>>({ activity: true, start: true, finish: true, days: true });
+  protected readonly columnWidths = signal<Record<TaskColumn, number>>({ activity: 220, start: 80, finish: 80, days: 60 });
   protected readonly search = signal('');
   protected readonly resourceDialogTask = signal<GanttTask | null>(null);
   protected readonly selectedResourceIds = signal<Set<string>>(new Set());
@@ -44,13 +53,15 @@ export class GanttComponent {
   protected readonly months = computed<MonthBand[]>(() => {
     const values: MonthBand[] = [];
     this.days().forEach(day => {
-      const label = day.date.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+      const label = day.date.toLocaleDateString(this.language() === 'tr' ? 'tr-TR' : 'en-GB', { month: 'long', year: 'numeric' });
       const last = values.at(-1);
       last?.label === label ? last.days++ : values.push({ label, days: 1 });
     });
     return values;
   });
   protected readonly timelineWidth = computed(() => this.days().length * this.dayWidth());
+  protected readonly taskPanelWidth = computed(() => this.taskColumns.reduce((total, column) => total + (this.columnVisible(column) ? this.columnWidths()[column] : 0), 0));
+  protected readonly taskGridColumns = computed(() => this.taskColumns.filter(column => this.columnVisible(column)).map(column => `${this.columnWidths()[column]}px`).join(' ') || '0px');
   protected readonly groups = computed(() => [...new Set(this.filteredTasks().map(task => task.wbs))]);
 
   protected tasksInGroup(group: string): GanttTask[] { return this.filteredTasks().filter(task => task.wbs === group); }
@@ -78,7 +89,7 @@ export class GanttComponent {
     if (fuel && fuelPrice) total += fuel.consumptionPerHour * fuelPrice.unitPrice * days * 8 * assignment.quantity;
     return total ? `Est. ${this.money(total)}` : '';
   }
-  protected openResourceDialog(event: MouseEvent, task: GanttTask): void { event.preventDefault(); this.selectedResourceIds.set(new Set(task.assignments.map(assignment => assignment.resourceId))); this.resourceDialogTask.set(task); }
+  protected openResourceDialog(event: MouseEvent, task: GanttTask): void { event.preventDefault(); if (this.readonly()) return; this.selectedResourceIds.set(new Set(task.assignments.map(assignment => assignment.resourceId))); this.resourceDialogTask.set(task); }
   protected toggleResource(id: string): void { this.selectedResourceIds.update(current => { const next = new Set(current); next.has(id) ? next.delete(id) : next.add(id); return next; }); }
   protected addResources(): void {
     const task = this.resourceDialogTask(); if (!task) return;
@@ -89,13 +100,28 @@ export class GanttComponent {
   }
 
   protected beginResize(event: PointerEvent, task: GanttTask, edge: ResizeEdge): void {
+    if (this.readonly()) return;
     event.preventDefault(); event.stopPropagation();
     (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
     this.drag.set({ task, edge, originX: event.clientX, draft: { ...task } });
   }
 
+  protected beginColumnResize(event: PointerEvent, column: TaskColumn): void {
+    event.preventDefault(); event.stopPropagation();
+    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    this.columnResize.set({ column, originX: event.clientX, originWidth: this.columnWidths()[column] });
+  }
+
   @HostListener('window:pointermove', ['$event'])
   protected resize(event: PointerEvent): void {
+    const columnState = this.columnResize();
+    if (columnState) {
+      const minimum = columnState.column === 'activity' ? 130 : columnState.column === 'days' ? 48 : 68;
+      const maximum = columnState.column === 'activity' ? 520 : columnState.column === 'days' ? 130 : 190;
+      const width = Math.min(maximum, Math.max(minimum, columnState.originWidth + event.clientX - columnState.originX));
+      this.columnWidths.update(current => ({ ...current, [columnState.column]: width }));
+      return;
+    }
     const state = this.drag(); if (!state) return;
     const deltaDays = Math.round((event.clientX - state.originX) / this.dayWidth());
     const start = new Date(`${state.task.start}T00:00:00`); const end = new Date(`${state.task.end}T00:00:00`);
@@ -107,12 +133,27 @@ export class GanttComponent {
 
   @HostListener('window:pointerup')
   protected finishResize(): void {
+    if (this.columnResize()) { this.columnResize.set(null); return; }
     const state = this.drag(); if (!state) return;
     this.drag.set(null);
     if (state.draft.start !== state.task.start || state.draft.end !== state.task.end) this.taskChange.emit(state.draft);
   }
 
-  protected setZoom(width: number): void { this.dayWidth.set(width); }
+  protected setZoom(mode: ZoomMode): void { this.zoomMode.set(mode); }
+  protected toggleColumnMenu(event: MouseEvent): void { event.stopPropagation(); this.columnMenuOpen.update(open => !open); }
+  protected toggleColumn(column: TaskColumn): void { this.visibleColumns.update(current => ({ ...current, [column]: !current[column] })); }
+  protected columnVisible(column: TaskColumn): boolean { return this.visibleColumns()[column]; }
+  protected columnLabel(column: TaskColumn): string {
+    const labels = {
+      activity: this.t('Activity', 'Aktivite'), start: this.t('Start', 'Başlangıç'),
+      finish: this.t('Finish', 'Bitiş'), days: this.t('Days', 'Gün'),
+    };
+    return labels[column];
+  }
+  protected shortDate(value: string): string { const [year, month, day] = value.split('-'); return `${day}.${month}.${year.slice(-2)}`; }
+  protected weekdayLabel(date: Date): string { return date.toLocaleDateString(this.language() === 'tr' ? 'tr-TR' : 'en-GB', { weekday: 'short' }); }
+  @HostListener('document:pointerdown')
+  protected closeColumnMenu(): void { this.columnMenuOpen.set(false); }
   protected t(en: string, tr: string): string { return this.language() === 'tr' ? tr : en; }
   private earliestDate(): string { return this.tasks().map(task => task.start).sort()[0] ?? this.iso(new Date()); }
   private latestDate(): string { return this.tasks().map(task => task.end).sort().at(-1) ?? this.iso(new Date()); }

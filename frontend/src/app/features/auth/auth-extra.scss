@@ -1,0 +1,13 @@
+.text-button,
+.back-button {
+  width: fit-content;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #168f86;
+  font: 700 9px var(--font);
+  cursor: pointer;
+}
+
+.text-button { justify-self: end; margin-top: -6px; }
+.back-button { justify-self: center; color: #738792; }
