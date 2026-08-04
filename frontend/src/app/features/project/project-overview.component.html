@@ -1,20 +1,18 @@
-<div class="page-heading"><div><p class="eyebrow">PROJECT OVERVIEW</p><h1>{{ projectName() }}</h1><p>A complete view of the work breakdown, activities and assigned resources.</p></div></div>
-<div class="overview-summary">
-  <article><small>PROJECT WINDOW</small><strong>{{ projectStart() }} — {{ projectEnd() }}</strong></article>
-  <article><small>WBS ITEMS</small><strong>{{ groups().length }}</strong></article>
-  <article><small>ACTIVITIES</small><strong>{{ tasks().length }}</strong></article>
-  <article><small>RESOURCE ASSIGNMENTS</small><strong>{{ assignmentCount() }}</strong></article>
-  <article class="cost"><small>ESTIMATED PROJECT COST</small><strong>{{ money(totalCost()) }}</strong></article>
-</div>
+<section class="overview-hero">
+  <div class="hero-main"><span class="hero-mark">CE</span><div><p>{{ t('PROJECT OVERVIEW', 'PROJE GENEL BAKIŞI') }}</p><h1>{{ projectName() }}</h1><small>{{ formatDate(projectStart()) }} · {{ formatDate(projectEnd()) }}</small></div></div>
+  <div class="hero-cost"><small>{{ t('ESTIMATED PROJECT COST', 'TAHMİNİ PROJE MALİYETİ') }}</small><strong>{{ money(totalCost()) }}</strong><span>{{ currency() }} · {{ t('Current programme', 'Güncel iş programı') }}</span></div>
+  <div class="hero-metrics"><article><span>01</span><div><small>WBS</small><strong>{{ groups().length }}</strong></div></article><article><span>02</span><div><small>{{ t('ACTIVITIES', 'AKTİVİTELER') }}</small><strong>{{ tasks().length }}</strong></div></article><article><span>03</span><div><small>{{ t('ASSIGNMENTS', 'ATAMALAR') }}</small><strong>{{ assignmentCount() }}</strong></div></article><article><span>04</span><div><small>{{ t('CATALOG RESOURCES', 'KATALOG KAYNAKLARI') }}</small><strong>{{ resources().length }}</strong></div></article></div>
+</section>
+<div class="section-title"><div><p>{{ t('WORK BREAKDOWN', 'İŞ KIRILIMI') }}</p><h2>{{ t('Project structure', 'Proje yapısı') }}</h2></div><span>WBS · {{ t('Activity', 'Aktivite') }} · {{ t('Resources', 'Kaynaklar') }}</span></div>
 <div class="overview-tree">
   @for (group of groups(); track group.name) {
-    <section class="wbs-card"><header><div><span>WBS</span><h2>{{ group.name }}</h2></div><b>{{ group.tasks.length }} activities</b></header>
+    <section class="wbs-card"><header><span class="wbs-number">{{ wbsNumber($index) }}</span><div><small>{{ t('WORK BREAKDOWN ITEM', 'İŞ KIRILIM KALEMİ') }}</small><h2>{{ group.name }}</h2></div><b>{{ group.tasks.length }} {{ t('activities', 'aktivite') }}</b></header>
       @for (task of group.tasks; track task.id) {
         <article class="activity-card">
-          <div class="activity-copy"><code>{{ task.code }}</code><span><strong>{{ task.name }}</strong><small>{{ task.start }} — {{ task.end }}</small></span><b>{{ taskTotal(task) }}</b></div>
+          <div class="activity-copy"><code>{{ task.code }}</code><span><strong>{{ task.name }}</strong><small>{{ formatDate(task.start) }} · {{ formatDate(task.end) }}</small></span><b>{{ taskTotal(task) }}</b></div>
           <div class="assigned-list">
             @for (item of resourcesFor(task); track item.resource.id) { <span><i [class]="item.resource.type"></i><strong>{{ item.resource.name }}</strong><small>{{ item.resource.subtype }}</small><b>× {{ item.quantity }}</b></span> }
-            @empty { <p>No resources assigned</p> }
+            @empty { <p>{{ t('No resources assigned', 'Atanmış kaynak yok') }}</p> }
           </div>
         </article>
       }

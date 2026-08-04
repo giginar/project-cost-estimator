@@ -19,6 +19,9 @@ export interface ActivityResource {
   name: string;
   description?: string;
   subtype: string;
+  roleName?: string; skillLevel?: string; genericResource?: boolean;
+  manufacturer?: string; model?: string; capacity?: number; capacityUnit?: string; owned?: boolean;
+  defaultUnit?: string;
   costs: ResourceCost[];
   fuelConsumptions: FuelConsumption[];
 }

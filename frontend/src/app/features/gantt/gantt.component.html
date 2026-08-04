@@ -1,21 +1,21 @@
 <section class="gantt-card">
   <div class="gantt-toolbar">
-    <div><h2>Activity timeline</h2><span>{{ filteredTasks().length }} activities</span></div>
-    <label class="search"><span>⌕</span><input #query type="search" placeholder="Search activities" (input)="search.set(query.value)" /></label>
+    <div><h2>{{ t('Activity timeline', 'Aktivite zaman çizelgesi') }}</h2><span>{{ filteredTasks().length }} {{ t('activities', 'aktivite') }}</span></div>
+    <label class="search"><span>⌕</span><input #query type="search" [placeholder]="t('Search activities', 'Aktivitelerde ara')" (input)="search.set(query.value)" /></label>
     <div class="zoom" aria-label="Timeline zoom">
-      <button [class.active]="dayWidth() === 24" (click)="setZoom(24)">Compact</button>
-      <button [class.active]="dayWidth() === 34" (click)="setZoom(34)">Week</button>
-      <button [class.active]="dayWidth() === 50" (click)="setZoom(50)">Day</button>
+      <button [class.active]="dayWidth() === 24" (click)="setZoom(24)">{{ t('Compact', 'Kompakt') }}</button>
+      <button [class.active]="dayWidth() === 34" (click)="setZoom(34)">{{ t('Week', 'Hafta') }}</button>
+      <button [class.active]="dayWidth() === 50" (click)="setZoom(50)">{{ t('Day', 'Gün') }}</button>
     </div>
     <button class="more" aria-label="More actions">•••</button>
   </div>
 
-  <div class="interaction-hint"><span>↔</span> Drag either end to adjust dates · Right-click a bar to add personnel, equipment or material</div>
+  <div class="interaction-hint"><span>↔</span> {{ t('Drag either end to adjust dates · Right-click a bar to add personnel, equipment or material', 'Tarihleri ayarlamak için uçları sürükleyin · Kaynak eklemek için bara sağ tıklayın') }}</div>
 
   <div class="gantt-scroll">
     <div class="gantt-layout" [style.--timeline-width.px]="timelineWidth()" [style.--day-width.px]="dayWidth()">
       <div class="task-header">
-        <span>ACTIVITY</span><span>START</span><span>FINISH</span><span>DAYS</span>
+        <span>{{ t('ACTIVITY', 'AKTİVİTE') }}</span><span>{{ t('START', 'BAŞLANGIÇ') }}</span><span>{{ t('FINISH', 'BİTİŞ') }}</span><span>{{ t('DAYS', 'GÜN') }}</span>
       </div>
       <div class="timeline-header">
         <div class="month-row">
@@ -58,10 +58,10 @@
                   <div class="date-popover">{{ displayTask(task).start | date:'dd MMM' }} — {{ displayTask(task).end | date:'dd MMM' }}</div>
                 }
                 <div class="resource-tooltip">
-                  <header><strong>{{ task.name }}</strong><small>{{ task.assignments.length }} assigned resources</small></header>
+                  <header><strong>{{ task.name }}</strong><small>{{ task.assignments.length }} {{ t('assigned resources', 'atanmış kaynak') }}</small></header>
                   @for (resource of resourcesForTask(task); track resource.id) {
                     <div class="tooltip-resource"><i [class]="resource.type"></i><span><strong>{{ resource.name }}</strong><small>{{ rateSummary(resource) }}</small>@if (fuelSummary(resource)) { <small>{{ fuelSummary(resource) }}</small> }</span><b>{{ estimatedCost(task, resource) }}</b></div>
-                  } @empty { <p>No resources assigned. Right-click to add one.</p> }
+                  } @empty { <p>{{ t('No resources assigned. Right-click to add one.', 'Atanmış kaynak yok. Eklemek için sağ tıklayın.') }}</p> }
                 </div>
               </div>
             </div>
@@ -75,18 +75,18 @@
 @if (resourceDialogTask(); as task) {
   <div class="dialog-backdrop" (mousedown)="resourceDialogTask.set(null)">
     <section class="resource-dialog" role="dialog" aria-modal="true" aria-labelledby="resource-dialog-title" (mousedown)="$event.stopPropagation()">
-      <header><div><small>ADD TO ACTIVITY</small><h3 id="resource-dialog-title">{{ task.name }}</h3></div><button aria-label="Close" (click)="resourceDialogTask.set(null)">×</button></header>
+      <header><div><small>{{ t('ADD TO ACTIVITY', 'AKTİVİTEYE EKLE') }}</small><h3 id="resource-dialog-title">{{ task.name }}</h3></div><button aria-label="Close" (click)="resourceDialogTask.set(null)">×</button></header>
       <div class="resource-columns">
         @for (type of ['personnel', 'equipment', 'material']; track type) {
           <div class="resource-group">
-            <h4>{{ type === 'equipment' ? 'Equipment' : type === 'personnel' ? 'Personnel' : 'Material' }}</h4>
+            <h4>{{ type === 'equipment' ? t('Equipment', 'Ekipman') : type === 'personnel' ? t('Personnel', 'Personel') : t('Material', 'Malzeme') }}</h4>
             @for (resource of resourcesByType($any(type)); track resource.id) {
               <label><input type="checkbox" [checked]="selectedResourceIds().has(resource.id)" (change)="toggleResource(resource.id)" /><span><strong>{{ resource.name }}</strong><small>{{ resource.code }} · {{ resource.subtype }}</small></span></label>
             } @empty { <p>No {{ type }} resources found.</p> }
           </div>
         }
       </div>
-      <footer><button class="cancel" (click)="resourceDialogTask.set(null)">Cancel</button><button class="confirm" (click)="addResources()">Save assignments ({{ selectedResourceIds().size }})</button></footer>
+      <footer><button class="cancel" (click)="resourceDialogTask.set(null)">{{ t('Cancel', 'İptal') }}</button><button class="confirm" (click)="addResources()">{{ t('Save assignments', 'Atamaları kaydet') }} ({{ selectedResourceIds().size }})</button></footer>
     </section>
   </div>
 }

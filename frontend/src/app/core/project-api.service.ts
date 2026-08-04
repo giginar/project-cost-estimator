@@ -1,16 +1,18 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable, forkJoin, of, switchMap, map, tap } from 'rxjs';
-import { ActivityAssignment, ActivityResource, GanttTask, NewResource } from '../features/gantt/gantt.models';
+import { ActivityAssignment, ActivityResource, GanttTask, NewResource, ResourceCost } from '../features/gantt/gantt.models';
 
-interface ProjectSummary { id: string; name: string; plannedStartDate: string; plannedEndDate: string; currency: string; }
+interface ProjectSummary { id: string; code: string; name: string; description: string | null; plannedStartDate: string; plannedEndDate: string; currency: string; languageCode: 'en' | 'tr'; usdTryRate: number | null; eurTryRate: number | null; status: string; }
 interface ActivityView { id: string; code: string; name: string; type: string; plannedQuantity: number | null; quantityUnit: string | null; plannedDuration: number | null; durationUnit: string | null; plannedStartDate: string | null; plannedEndDate: string | null; assignments: ActivityAssignment[]; }
 interface WbsView { id: string; code: string; name: string; activities: ActivityView[]; }
 interface EstimateView { id: string; wbsItems: WbsView[]; }
 interface ProjectDetail { project: ProjectSummary; estimates: EstimateView[]; }
 export interface WbsOption { id: string; code: string; name: string; }
 export interface NewActivity { wbsId: string; code: string; name: string; type: string; start: string; end: string; }
-export interface ScheduleData { projectId: string; estimateId: string; projectName: string; projectStart: string; projectEnd: string; currencyCode: string; tasks: GanttTask[]; activities: Map<string, ActivityView>; wbsItems: WbsOption[]; }
+export interface ProjectSettings { code: string; name: string; description: string; start: string; end: string; currencyCode: 'USD' | 'TRY' | 'EUR'; usdTryRate: number | null; eurTryRate: number | null; status: string; }
+export interface NewCostRate { resourceId: string; category: string; name: string; calculationBasis: string; unitPrice: number; unit: string; }
+export interface ScheduleData { projectId: string; estimateId: string; projectCode: string; projectName: string; projectDescription: string; projectStatus: string; projectStart: string; projectEnd: string; currencyCode: string; languageCode: 'en' | 'tr'; usdTryRate: number | null; eurTryRate: number | null; tasks: GanttTask[]; activities: Map<string, ActivityView>; wbsItems: WbsOption[]; }
 
 @Injectable({ providedIn: 'root' })
 export class ProjectApiService {
@@ -30,7 +32,7 @@ export class ProjectApiService {
             return { id: activity.id, code: activity.code, name: activity.name, wbs: wbs.name.toUpperCase(), start: activity.plannedStartDate!, end: activity.plannedEndDate!, assignments: activity.assignments ?? [] };
           }));
         const wbsItems = estimate.wbsItems.map(({ id, code, name }) => ({ id, code, name }));
-        return { projectId: detail.project.id, estimateId: estimate.id, projectName: detail.project.name, projectStart: detail.project.plannedStartDate, projectEnd: detail.project.plannedEndDate, currencyCode: detail.project.currency || 'USD', tasks, activities, wbsItems };
+        return { projectId: detail.project.id, estimateId: estimate.id, projectCode: detail.project.code, projectName: detail.project.name, projectDescription: detail.project.description ?? '', projectStatus: detail.project.status, projectStart: detail.project.plannedStartDate, projectEnd: detail.project.plannedEndDate, currencyCode: detail.project.currency || 'USD', languageCode: detail.project.languageCode || 'en', usdTryRate: detail.project.usdTryRate, eurTryRate: detail.project.eurTryRate, tasks, activities, wbsItems };
       }),
     );
   }
@@ -93,6 +95,24 @@ export class ProjectApiService {
       }),
       map(resource => ({ ...resource, costs: resource.costs ?? [], fuelConsumptions: resource.fuelConsumptions ?? [], type: resource.type.toLowerCase() as ActivityResource['type'] })),
     );
+  }
+
+  addResourceCost(input: NewCostRate): Observable<ResourceCost> {
+    return this.http.post<ResourceCost>(`/api/v1/resources/${input.resourceId}/cost-components`, {
+      category: input.category, name: input.name, calculationBasis: input.calculationBasis,
+      unitPrice: input.unitPrice, unit: input.unit, taxable: false, taxRate: 0,
+    });
+  }
+
+  updateProjectSettings(context: ScheduleData, settings: ProjectSettings, languageCode: 'en' | 'tr'): Observable<ProjectSettings> {
+    return this.http.put<ProjectDetail>(`/api/v1/projects/${context.projectId}`, {
+      code: settings.code, name: settings.name, description: settings.description, plannedStartDate: settings.start,
+      plannedEndDate: settings.end, currencyCode: settings.currencyCode, languageCode, status: settings.status,
+      usdTryRate: settings.usdTryRate, eurTryRate: settings.eurTryRate,
+    }).pipe(map(detail => ({
+      code: detail.project.code, name: detail.project.name, description: detail.project.description ?? '', start: detail.project.plannedStartDate,
+      end: detail.project.plannedEndDate, currencyCode: (detail.project.currency || settings.currencyCode) as 'USD' | 'TRY' | 'EUR', usdTryRate: detail.project.usdTryRate, eurTryRate: detail.project.eurTryRate, status: detail.project.status,
+    })));
   }
 
   assignResource(context: ScheduleData, task: GanttTask, resource: ActivityResource): Observable<ActivityAssignment> {

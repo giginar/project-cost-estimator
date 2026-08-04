@@ -1,6 +1,55 @@
-<div class="settings-bar"><span>⚙</span><div><small>{{ t('PROJECT SETTINGS', 'PROJE AYARLARI') }}</small><strong>{{ t('General preferences', 'Genel tercihler') }}</strong><p>{{ t('Project identity, dates, language and currency', 'Proje kimliği, tarihler, dil ve para birimi') }}</p></div><button [disabled]="saving()" (click)="submit()">{{ saving() ? t('Saving…', 'Kaydediliyor…') : t('Save changes', 'Değişiklikleri kaydet') }}</button></div>
+<div class="settings-bar">
+  <span>⚙</span>
+  <div>
+    <small>{{ t('PROJECT SETTINGS', 'PROJE AYARLARI') }}</small>
+    <strong>{{ t('General preferences', 'Genel tercihler') }}</strong>
+    <p>{{ t('Project identity, dates, language and currency', 'Proje kimliği, tarihler, dil ve para birimi') }}</p>
+  </div>
+  <button [disabled]="saving()" (click)="submit()">{{ saving() ? t('Saving…', 'Kaydediliyor…') : t('Save changes', 'Değişiklikleri kaydet') }}</button>
+</div>
+
 <form class="settings-layout" (submit)="$event.preventDefault(); submit()">
-  <section><header><span>01</span><div><h2>{{ t('Project details', 'Proje bilgileri') }}</h2><p>{{ t('The identity and planned window of this project.', 'Projenin kimliği ve planlanan tarih aralığı.') }}</p></div></header><div class="fields"><label><span>{{ t('Project code', 'Proje kodu') }}</span><input [value]="draft().code" (input)="update('code', $any($event.target).value)" /></label><label><span>{{ t('Status', 'Durum') }}</span><select [value]="draft().status" (change)="update('status', $any($event.target).value)"><option value="DRAFT">{{ t('Draft', 'Taslak') }}</option><option value="ACTIVE">{{ t('Active', 'Aktif') }}</option><option value="COMPLETED">{{ t('Completed', 'Tamamlandı') }}</option><option value="CANCELLED">{{ t('Cancelled', 'İptal edildi') }}</option></select></label><label class="wide"><span>{{ t('Project name', 'Proje adı') }}</span><input [value]="draft().name" (input)="update('name', $any($event.target).value)" /></label><label><span>{{ t('Start date', 'Başlangıç tarihi') }}</span><input type="date" [value]="draft().start" (input)="update('start', $any($event.target).value)" /></label><label><span>{{ t('Finish date', 'Bitiş tarihi') }}</span><input type="date" [value]="draft().end" [min]="draft().start" (input)="update('end', $any($event.target).value)" /></label></div></section>
-  <section><header><span>02</span><div><h2>{{ t('Localization', 'Yerelleştirme') }}</h2><p>{{ t('Choose the interface language and project currency.', 'Arayüz dilini ve proje para birimini seçin.') }}</p></div></header><div class="fields"><label><span>{{ t('Interface language', 'Arayüz dili') }}</span><select [value]="draftLanguage()" (change)="draftLanguage.set($any($event.target).value)"><option value="en">English</option><option value="tr">Türkçe</option></select></label><label><span>{{ t('Project currency', 'Proje para birimi') }}</span><select [value]="draft().currencyCode" (change)="update('currencyCode', $any($event.target).value)"><option value="USD">USD · US Dollar</option><option value="TRY">TRY · Türk Lirası</option></select></label><div class="currency-note wide"><strong>{{ t('Currency changes do not convert prices', 'Para birimi değişikliği fiyatları dönüştürmez') }}</strong><p>{{ t('Existing numeric rates remain unchanged. Convert catalog rates manually before switching currency.', 'Mevcut sayısal fiyatlar değişmeden kalır. Para birimini değiştirmeden önce katalog fiyatlarını manuel olarak dönüştürün.') }}</p></div></div></section>
+  <section>
+    <header><span>01</span><div><h2>{{ t('Project details', 'Proje bilgileri') }}</h2><p>{{ t('The identity and planned window of this project.', 'Projenin kimliği ve planlanan tarih aralığı.') }}</p></div></header>
+    <div class="fields">
+      <label><span>{{ t('Project code', 'Proje kodu') }}</span><input [value]="draft().code" (input)="update('code', $any($event.target).value)" /></label>
+      <label><span>{{ t('Status', 'Durum') }}</span><select [value]="draft().status" (change)="update('status', $any($event.target).value)"><option value="DRAFT">{{ t('Draft', 'Taslak') }}</option><option value="ACTIVE">{{ t('Active', 'Aktif') }}</option><option value="COMPLETED">{{ t('Completed', 'Tamamlandı') }}</option><option value="CANCELLED">{{ t('Cancelled', 'İptal edildi') }}</option></select></label>
+      <label class="wide"><span>{{ t('Project name', 'Proje adı') }}</span><input [value]="draft().name" (input)="update('name', $any($event.target).value)" /></label>
+      <label class="wide"><span>{{ t('Description', 'Açıklama') }}</span><textarea [value]="draft().description" (input)="update('description', $any($event.target).value)"></textarea></label>
+      <label><span>{{ t('Start date', 'Başlangıç tarihi') }}</span><input type="date" [value]="draft().start" (input)="update('start', $any($event.target).value)" /></label>
+      <label><span>{{ t('Finish date', 'Bitiş tarihi') }}</span><input type="date" [value]="draft().end" [min]="draft().start" (input)="update('end', $any($event.target).value)" /></label>
+    </div>
+  </section>
+
+  <section>
+    <header><span>02</span><div><h2>{{ t('Localization', 'Yerelleştirme') }}</h2><p>{{ t('Choose the interface language, project currency and manual exchange rates.', 'Arayüz dilini, proje para birimini ve manuel kurları seçin.') }}</p></div></header>
+    <div class="fields">
+      <label><span>{{ t('Interface language', 'Arayüz dili') }}</span><select [value]="draftLanguage()" (change)="draftLanguage.set($any($event.target).value)"><option value="en">English</option><option value="tr">Türkçe</option></select></label>
+      <label><span>{{ t('Project currency', 'Proje para birimi') }}</span><select [value]="draft().currencyCode" (change)="update('currencyCode', $any($event.target).value)"><option value="USD">USD · US Dollar</option><option value="EUR">EUR · Euro</option><option value="TRY">TRY · Türk Lirası</option></select></label>
+
+      <div class="exchange-rates wide">
+        <div class="exchange-heading">
+          <strong>{{ t('Manual exchange rates', 'Manuel döviz kurları') }}</strong>
+          <small>{{ t('Set the rates used by this project.', 'Bu projede kullanılacak kurları siz belirleyin.') }}</small>
+        </div>
+        <label class="rate-row">
+          <span>1 USD =</span>
+          <input type="number" min="0.000001" step="0.000001" placeholder="0.00" [value]="draft().usdTryRate ?? ''" (input)="update('usdTryRate', $any($event.target).value === '' ? null : $any($event.target).valueAsNumber)" />
+          <b>TRY</b>
+        </label>
+        <label class="rate-row">
+          <span>1 EUR =</span>
+          <input type="number" min="0.000001" step="0.000001" placeholder="0.00" [value]="draft().eurTryRate ?? ''" (input)="update('eurTryRate', $any($event.target).value === '' ? null : $any($event.target).valueAsNumber)" />
+          <b>TRY</b>
+        </label>
+        <div class="cross-rate"><span>{{ t('Derived cross rate', 'Hesaplanan çapraz kur') }}</span><strong>1 EUR = {{ eurUsdRate() }} USD</strong></div>
+        @if (currencyChanged()) {
+          <p>{{ t('When saved, catalog rates and project costs will be converted from', 'Kaydedildiğinde katalog fiyatları ve proje maliyetleri şu para biriminden dönüştürülecek:') }} <b>{{ settings().currencyCode }} → {{ draft().currencyCode }}</b>.</p>
+        }
+      </div>
+    </div>
+  </section>
+
+  @if (validationError()) { <p class="validation-message">{{ validationError() }}</p> }
   @if (message()) { <p class="save-message">{{ message() }}</p> }
 </form>

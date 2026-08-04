@@ -1,15 +1,17 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
-import { catchError, finalize, of } from 'rxjs';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { catchError, finalize, map, of, retry, switchMap } from 'rxjs';
 import { GanttComponent } from './features/gantt/gantt.component';
 import { ActivityResource, GanttTask, NewResource, ResourceSelection, ResourceType } from './features/gantt/gantt.models';
 import { ResourceCatalogComponent } from './features/resources/resource-catalog.component';
 import { ProjectOverviewComponent } from './features/project/project-overview.component';
 import { ProjectReportComponent } from './features/project/project-report.component';
-import { NewActivity, ProjectApiService, ScheduleData, WbsOption } from './core/project-api.service';
+import { CostLibraryComponent } from './features/cost-library/cost-library.component';
+import { ProjectSettingsComponent } from './features/settings/project-settings.component';
+import { NewActivity, NewCostRate, ProjectApiService, ProjectSettings, ScheduleData, WbsOption } from './core/project-api.service';
 
 @Component({
   selector: 'app-root',
-  imports: [GanttComponent, ResourceCatalogComponent, ProjectOverviewComponent, ProjectReportComponent],
+  imports: [GanttComponent, ResourceCatalogComponent, ProjectOverviewComponent, ProjectReportComponent, CostLibraryComponent, ProjectSettingsComponent],
   templateUrl: './app.html',
   styleUrl: './app.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -18,11 +20,20 @@ export class App implements OnInit {
   private readonly api = inject(ProjectApiService);
   protected scheduleContext: ScheduleData | null = null;
   protected readonly sidebarCollapsed = signal(false);
-  protected readonly currentPage = signal<'overview' | 'schedule' | 'report' | ResourceType>('schedule');
+  protected readonly currentPage = signal<'overview' | 'schedule' | 'cost-library' | 'report' | 'settings' | ResourceType>('schedule');
+  protected readonly language = signal<'en' | 'tr'>('en');
+  protected readonly projectCode = signal('MAR-001');
+  protected readonly projectStatus = signal('DRAFT');
   protected readonly projectName = signal('Marine Excavation — Phase 1');
+  protected readonly projectDescription = signal('Demo marine excavation project');
   protected readonly projectStart = signal('2026-08-03');
   protected readonly projectEnd = signal('2026-09-26');
   protected readonly currencyCode = signal('USD');
+  protected readonly usdTryRate = signal<number | null>(null);
+  protected readonly eurTryRate = signal<number | null>(null);
+  protected readonly settingsSaving = signal(false);
+  protected readonly settingsMessage = signal('');
+  protected readonly settings = computed<ProjectSettings>(() => ({ code: this.projectCode(), name: this.projectName(), description: this.projectDescription(), start: this.projectStart(), end: this.projectEnd(), currencyCode: this.currencyCode() as 'USD' | 'TRY' | 'EUR', usdTryRate: this.usdTryRate(), eurTryRate: this.eurTryRate(), status: this.projectStatus() }));
   protected readonly tasks = signal<GanttTask[]>([
     { id: '1', code: '1.1', name: 'Site mobilization', wbs: 'PREPARATION', start: '2026-08-03', end: '2026-08-08', assignments: [] },
     { id: '2', code: '1.2', name: 'Bathymetric survey', wbs: 'PREPARATION', start: '2026-08-06', end: '2026-08-14', assignments: [] },
@@ -41,11 +52,11 @@ export class App implements OnInit {
   protected readonly activityDraft = signal<NewActivity>({ wbsId: '', code: '', name: '', type: 'WORK', start: '', end: '' });
 
   ngOnInit(): void {
-    this.api.loadSchedule().pipe(catchError(() => of(null))).subscribe(schedule => {
+    this.api.loadSchedule().pipe(retry({ count: 15, delay: 1000 }), catchError(() => of(null))).subscribe(schedule => {
       if (!schedule) return;
-      this.scheduleContext = schedule; this.projectName.set(schedule.projectName); this.projectStart.set(schedule.projectStart); this.projectEnd.set(schedule.projectEnd); this.currencyCode.set(schedule.currencyCode); this.tasks.set(schedule.tasks); this.wbsItems.set(schedule.wbsItems);
+      this.scheduleContext = schedule; this.projectCode.set(schedule.projectCode); this.projectName.set(schedule.projectName); this.projectDescription.set(schedule.projectDescription); this.projectStatus.set(schedule.projectStatus); this.projectStart.set(schedule.projectStart); this.projectEnd.set(schedule.projectEnd); this.currencyCode.set(schedule.currencyCode); this.usdTryRate.set(schedule.usdTryRate); this.eurTryRate.set(schedule.eurTryRate); this.language.set(schedule.languageCode); this.tasks.set(schedule.tasks); this.wbsItems.set(schedule.wbsItems);
     });
-    this.api.listResources().pipe(catchError(() => of([]))).subscribe(resources => this.resources.set(resources));
+    this.api.listResources().pipe(retry({ count: 15, delay: 1000 }), catchError(() => of([]))).subscribe(resources => this.resources.set(resources));
   }
 
   protected updateTask(updated: GanttTask): void {
@@ -68,6 +79,24 @@ export class App implements OnInit {
   protected createResource(resource: NewResource): void {
     this.api.createResource(resource).subscribe(created => this.resources.update(resources => [...resources, created]));
   }
+  protected createCost(rate: NewCostRate): void {
+    this.api.addResourceCost(rate).subscribe(cost => this.resources.update(resources => resources.map(resource => resource.id === rate.resourceId ? { ...resource, costs: [...resource.costs, cost] } : resource)));
+  }
+  protected saveSettings(event: { settings: ProjectSettings; language: 'en' | 'tr' }): void {
+    if (!this.scheduleContext) { this.settingsMessage.set(event.language === 'tr' ? 'Proje verisi henüz yüklenmedi. Backend bağlantısını kontrol edip sayfayı yenileyin.' : 'Project data has not loaded yet. Check the backend connection and refresh.'); return; }
+    this.settingsSaving.set(true); this.settingsMessage.set('');
+    this.api.updateProjectSettings(this.scheduleContext, event.settings, event.language).pipe(
+      switchMap(settings => this.api.listResources().pipe(map(resources => ({ settings, resources })))),
+      finalize(() => this.settingsSaving.set(false)),
+    ).subscribe({
+      next: ({ settings, resources }) => {
+        this.projectCode.set(settings.code); this.projectName.set(settings.name); this.projectDescription.set(settings.description); this.projectStart.set(settings.start); this.projectEnd.set(settings.end); this.currencyCode.set(settings.currencyCode); this.usdTryRate.set(settings.usdTryRate); this.eurTryRate.set(settings.eurTryRate); this.projectStatus.set(settings.status); this.language.set(event.language); this.resources.set(resources);
+        this.scheduleContext!.projectCode = settings.code; this.scheduleContext!.projectName = settings.name; this.scheduleContext!.projectDescription = settings.description; this.scheduleContext!.projectStatus = settings.status; this.scheduleContext!.projectStart = settings.start; this.scheduleContext!.projectEnd = settings.end; this.scheduleContext!.currencyCode = settings.currencyCode; this.scheduleContext!.languageCode = event.language; this.scheduleContext!.usdTryRate = settings.usdTryRate; this.scheduleContext!.eurTryRate = settings.eurTryRate;
+        this.settingsMessage.set(event.language === 'tr' ? 'Proje ayarları, kurlar ve dönüştürülmüş fiyatlar kaydedildi.' : 'Project settings, exchange rates and converted prices saved.');
+      },
+      error: () => this.settingsMessage.set(event.language === 'tr' ? 'Ayarlar kaydedilemedi.' : 'Settings could not be saved.'),
+    });
+  }
 
   protected openActivityDialog(): void {
     const start = this.iso(new Date());
@@ -77,6 +106,8 @@ export class App implements OnInit {
     this.activityDialogOpen.set(true);
   }
   protected updateActivityDraft(field: keyof NewActivity, value: string): void { this.activityDraft.update(draft => ({ ...draft, [field]: value })); }
+  protected formatDate(value: string): string { return new Date(`${value}T00:00:00`).toLocaleDateString(this.language() === 'tr' ? 'tr-TR' : 'en-GB', { day: '2-digit', month: 'long', year: 'numeric' }); }
+  protected t(en: string, tr: string): string { return this.language() === 'tr' ? tr : en; }
   protected createActivity(): void {
     const draft = this.activityDraft();
     if (!this.scheduleContext || !draft.wbsId || !draft.code.trim() || !draft.name.trim() || !draft.start || !draft.end) { this.activityError.set('Complete all required fields.'); return; }

@@ -11,6 +11,7 @@ export class ResourceCatalogComponent {
   readonly type = input.required<ResourceType>();
   readonly resources = input<ActivityResource[]>([]);
   readonly currency = input('USD');
+  readonly language = input<'en' | 'tr'>('en');
   readonly resourceCreate = output<NewResource>();
   protected readonly dialogOpen = signal(false);
   protected readonly search = signal('');
@@ -21,9 +22,9 @@ export class ResourceCatalogComponent {
     return term ? resources.filter(resource => `${resource.code} ${resource.name} ${resource.subtype}`.toLowerCase().includes(term)) : resources;
   });
 
-  protected title(): string { return this.type() === 'personnel' ? 'Personnel' : this.type() === 'equipment' ? 'Equipment' : 'Material'; }
+  protected title(): string { return this.type() === 'personnel' ? this.t('Personnel', 'Personel') : this.type() === 'equipment' ? this.t('Equipment', 'Ekipman') : this.t('Material', 'Malzeme'); }
   protected subtitle(): string { return this.type() === 'personnel' ? 'Manage people and trades available to project activities.' : this.type() === 'equipment' ? 'Manage machinery and equipment available to project activities.' : 'Manage consumable and permanent materials used by activities.'; }
-  protected subtypeLabel(): string { return this.type() === 'personnel' ? 'Profession' : this.type() === 'equipment' ? 'Equipment type' : 'Material type'; }
+  protected subtypeLabel(): string { return this.type() === 'personnel' ? this.t('Profession', 'Meslek') : this.type() === 'equipment' ? this.t('Equipment type', 'Ekipman türü') : this.t('Material type', 'Malzeme türü'); }
   protected economicSummary(resource: ActivityResource): string {
     const rate = resource.costs.find(cost => cost.category !== 'FUEL');
     const fuel = resource.fuelConsumptions[0];
@@ -40,5 +41,6 @@ export class ResourceCatalogComponent {
     this.resourceCreate.emit({ ...value, code: value.code.trim(), name: value.name.trim(), subtype: value.subtype.trim(), description: value.description.trim() });
     this.dialogOpen.set(false);
   }
-  private money(value: number): string { return new Intl.NumberFormat('en-US', { style: 'currency', currency: this.currency(), maximumFractionDigits: 2 }).format(value); }
+  private money(value: number): string { return new Intl.NumberFormat(this.language() === 'tr' ? 'tr-TR' : 'en-US', { style: 'currency', currency: this.currency(), maximumFractionDigits: 2 }).format(value); }
+  protected t(en: string, tr: string): string { return this.language() === 'tr' ? tr : en; }
 }

@@ -20,6 +20,7 @@ export class GanttComponent {
   readonly tasks = input.required<GanttTask[]>();
   readonly resources = input<ActivityResource[]>([]);
   readonly currency = input('USD');
+  readonly language = input<'en' | 'tr'>('en');
   readonly taskChange = output<GanttTask>();
   readonly resourcesAdd = output<ResourceSelection>();
   protected readonly dayWidth = signal(34);
@@ -112,12 +113,13 @@ export class GanttComponent {
   }
 
   protected setZoom(width: number): void { this.dayWidth.set(width); }
+  protected t(en: string, tr: string): string { return this.language() === 'tr' ? tr : en; }
   private earliestDate(): string { return this.tasks().map(task => task.start).sort()[0] ?? this.iso(new Date()); }
   private latestDate(): string { return this.tasks().map(task => task.end).sort().at(-1) ?? this.iso(new Date()); }
   private addDays(date: Date, count: number): Date { const next = new Date(date); next.setDate(next.getDate() + count); return next; }
   private startOfWeek(date: Date): Date { return this.addDays(date, -((date.getDay() + 6) % 7)); }
   private daysBetween(start: Date, end: Date): number { return Math.round((Date.UTC(end.getFullYear(), end.getMonth(), end.getDate()) - Date.UTC(start.getFullYear(), start.getMonth(), start.getDate())) / DAY_MS); }
   private iso(date: Date): string { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; }
-  private money(value: number): string { return new Intl.NumberFormat('en-US', { style: 'currency', currency: this.currency(), maximumFractionDigits: 2 }).format(value); }
+  private money(value: number): string { return new Intl.NumberFormat(this.language() === 'tr' ? 'tr-TR' : 'en-US', { style: 'currency', currency: this.currency(), maximumFractionDigits: 2 }).format(value); }
   private costFactor(basis: string, days: number, quantity: number): number { if (basis === 'PER_HOUR') return days * 8 * quantity; if (basis === 'PER_WEEK') return days / 7 * quantity; if (basis === 'PER_MONTH') return days / 30 * quantity; if (basis === 'FIXED') return 1; if (basis === 'PER_UNIT') return quantity; return days * quantity; }
 }
