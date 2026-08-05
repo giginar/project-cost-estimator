@@ -13,6 +13,7 @@ public class FuelConsumption {
     private UUID id;
     private FuelType fuelType;
     private BigDecimal consumptionPerHour;
+    private BigDecimal standbyConsumptionPerHour;
     private UnitOfMeasure consumptionUnit;
     private EquipmentResource equipmentResource;
 }

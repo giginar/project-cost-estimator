@@ -1,7 +1,57 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap');
 
-:root { --font: 'DM Sans', sans-serif; --heading-font: 'Manrope', sans-serif; font-family: var(--font); color: #243b4d; background: #f4f6f8; }
+:root { --font: 'DM Sans', sans-serif; --heading-font: 'Manrope', sans-serif; --text-xs: 12px; --text-sm: 14px; --text-md: 16px; font-family: var(--font); color: #243b4d; background: #f4f6f8; }
 * { box-sizing: border-box; }
-html, body { margin: 0; min-height: 100%; }
+html, body { margin: 0; min-height: 100%; font-size: 15px; line-height: 1.5; }
 button, input { font-family: inherit; }
 button:focus-visible, input:focus-visible { outline: 2px solid #1ca69a; outline-offset: 2px; }
+
+/* Shared readability scale: feature styles may choose layout, but never unreadably small text. */
+app-root small { font-size: var(--text-xs) !important; line-height: 1.4; }
+app-root .eyebrow, app-root form label > span, app-root .dialog-section-title span { font-size: var(--text-xs) !important; line-height: 1.35; }
+app-root input:not([type='checkbox']), app-root select, app-root textarea { min-height: 44px; font-size: var(--text-sm) !important; }
+app-root textarea { line-height: 1.5; }
+app-root input[type='checkbox'] { min-width: 18px; min-height: 18px; }
+app-root .content p, app-root form p, app-root .resource-action-message, app-root .activity-error { font-size: var(--text-sm) !important; line-height: 1.5; }
+app-root .primary-button, app-root .secondary-button, app-root .share-button, app-root .outline, app-root .save, app-root .cancel, app-root .danger, app-root .submit, app-root .save-row, app-root .actions button, app-root .resource-scope button, app-root .project-menu button { min-height: 38px; font-size: 13px !important; }
+
+app-root .sidebar nav a, app-root .sidebar-footer > a { font-size: 14px !important; }
+app-root .sidebar .user strong, app-root .project-picker strong, app-root .project-list strong { font-size: 14px !important; }
+app-root .topbar { min-height: 78px !important; }
+app-root .page-heading p { font-size: var(--text-sm) !important; }
+app-root .summary-grid article, app-root .overview-summary article, app-root .report-summary article, app-root .pricing-summary article, app-root .commercial-summary article, app-root .planning-summary article { min-height: 88px; padding: 18px 20px !important; }
+app-root .summary-grid strong, app-root .overview-summary strong, app-root .report-summary strong, app-root .pricing-summary strong, app-root .commercial-summary strong, app-root .planning-summary strong { font-size: 17px !important; }
+
+app-root .table-head, app-root .report-row.head, app-root .rules > header, app-root .boq-row.head, app-root .activity-plan-row.head, app-root .task-header span, app-root .column-heading span { min-height: 48px; font-size: 11px !important; }
+app-root .catalog-table article { min-height: 78px !important; font-size: var(--text-sm) !important; line-height: 1.45; }
+app-root .catalog-table article code, app-root .catalog-table article strong, app-root .catalog-table article b { font-size: 13px !important; }
+app-root .report-row { min-height: 58px !important; font-size: 13px !important; }
+app-root .report-row code { font-size: var(--text-xs) !important; }
+app-root .rules > article, app-root .boq-row, app-root .activity-plan-row { min-height: 64px; font-size: 13px !important; line-height: 1.45; }
+app-root .rules article small { font-size: var(--text-xs) !important; }
+
+app-root .gantt-toolbar h2, app-root .catalog-card h2, app-root .planning-card h2, app-root .settings-layout h2 { font-size: 17px !important; }
+app-root .task-header span, app-root .group-label, app-root .column-heading span { font-size: 11px !important; }
+app-root .day-row small { font-size: 10px !important; }
+app-root .day-row strong, app-root .month-row div { font-size: var(--text-xs) !important; }
+app-root .task-name strong { font-size: var(--text-sm) !important; }
+app-root .task-row time, app-root .task-row > b, app-root .task-bar > span { font-size: 11px !important; }
+app-root .resource-group strong, app-root .assignment-fields label span, app-root .resource-tooltip strong, app-root .tooltip-resource strong, app-root .tooltip-resource b { font-size: var(--text-xs) !important; }
+
+app-root .settings-bar strong, app-root .resource-window-bar strong, app-root .planning-bar strong { font-size: 18px !important; }
+app-root .settings-layout section > header, app-root .profile-grid header, app-root .planning-card > header { padding: 19px 21px !important; }
+app-root .fields label > span, app-root .calendar-form label span, app-root .planning-dialog label span, app-root .dialog label span { font-size: var(--text-xs) !important; }
+app-project-overview .wbs-card h2, app-project-overview .activity-copy strong, app-project-overview .activity-copy > b { font-size: var(--text-sm) !important; }
+app-project-overview .assigned-list strong, app-project-overview .assigned-list b { font-size: var(--text-xs) !important; }
+
+app-auth .auth-card header p, app-auth .intro-copy p { font-size: var(--text-sm) !important; }
+app-auth .mode-tabs button, app-auth .submit, app-auth .text-button, app-auth .back-button { font-size: 13px !important; }
+app-auth .password-note, app-auth .error, app-auth .message, app-auth .auth-card footer, app-auth .role-list span, app-auth .role-list b { font-size: var(--text-xs) !important; }
+
+app-user-admin .admin-shell nav a, app-user-admin .admin-user strong, app-user-admin .admin-user button { font-size: var(--text-sm) !important; }
+app-user-admin .admin-shell header p, app-user-admin .message, app-user-admin .error { font-size: var(--text-sm) !important; }
+app-user-admin .admin-shell main > header button, app-user-admin .dialog footer button { min-height: 38px; font-size: 13px !important; }
+app-user-admin .stats article { min-height: 88px; padding: 18px 20px !important; }
+app-user-admin .user-row { min-height: 72px !important; font-size: 13px !important; }
+app-user-admin .identity strong { font-size: var(--text-sm) !important; }
+app-user-admin .role, app-user-admin .outbox strong, app-user-admin .outbox a { font-size: var(--text-xs) !important; }

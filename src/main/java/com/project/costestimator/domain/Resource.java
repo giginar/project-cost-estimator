@@ -15,5 +15,7 @@ public abstract class Resource {
     private String name;
     private String description;
     private ResourceStatus status;
+    private boolean shared;
+    private UUID ownerProjectId;
     private List<CostComponent> costComponents = new ArrayList<>();
 }

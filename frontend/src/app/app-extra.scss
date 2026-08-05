@@ -20,4 +20,11 @@
 .dialog-section-title { padding: 11px 12px; border: 1px solid #dce9e6; border-radius: 7px; background: #f2faf8; }
 .dialog-section-title span { color: #168f86; font-size: 8px; font-weight: 800; letter-spacing: .12em; }
 .dialog-section-title p { margin: 3px 0 0; color: #718c88; font-size: 8px; }
+.nav-group { display: grid; margin: 3px 0; padding: 7px 0 8px; border-top: 1px solid #294258; border-bottom: 1px solid #294258; }
+.nav-group-title { display: flex; align-items: center; gap: 13px; padding: 5px 13px 7px; color: #6f8a9d; font-size: 9px; letter-spacing: .1em; text-transform: uppercase; }
+nav .nav-child { margin-left: 31px; padding: 8px 12px; font-size: 11px; }
+.schedule-actions { display: flex; gap: 8px; margin-left: auto; }.project-window-bar .schedule-actions .primary-button { margin-left: 0; }.secondary-button { padding: 10px 14px; border: 1px solid #b7d6d2; border-radius: 7px; background: #f4fbfa; color: #168f86; font-weight: 700; cursor: pointer; }.primary-button:disabled { opacity: .45; cursor: default; }
+.activity-dialog label.activity-check { display: flex; flex-direction: row; align-items: center; gap: 8px; padding-top: 20px; }
+.activity-dialog label.activity-check input { width: 17px; height: 17px; accent-color: #168f86; }
+.activity-dialog label.activity-check span { text-transform: none; }
 @media (max-width: 720px) { .project-picker-wrap .project-picker { min-width: 190px; }.project-menu { width: min(350px, 78vw); } }

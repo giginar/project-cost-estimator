@@ -46,13 +46,18 @@ Swagger UI's **Try it out** button can execute every endpoint directly from the 
 ## Resource catalog
 
 - `GET /resources?type=equipment|personnel|material`
+- `GET /resources?projectId={projectId}` (project-owned plus shared resources)
 - `GET /resources/{id}`
 - `POST /resources/personnel`
 - `POST /resources/equipment`
 - `POST /resources/materials`
 - `POST /resources/{id}/cost-components`
+- `PUT|DELETE /resources/{id}/cost-components/{costId}`
+- `PUT /resources/{equipmentId}/equipment-economics`
+- `PUT /resources/{materialId}/material-procurement`
+- `PUT /resources/{id}/sharing`
 - `POST /resources/{equipmentId}/fuel-consumptions`
-- `DELETE /resources/{id}`
+- `DELETE /resources/{id}?projectId={ownerProjectId}`
 
 ## Project planning and estimation
 
@@ -62,17 +67,44 @@ Swagger UI's **Try it out** button can execute every endpoint directly from the 
 - `POST /projects/{projectId}/estimates/{estimateId}/wbs-items`
 - `POST /projects/{projectId}/estimates/{estimateId}/wbs-items/{wbsId}/activities`
 - `PUT /projects/{projectId}/estimates/{estimateId}/activities/{activityId}`
+- `PUT /projects/{projectId}/estimates/{estimateId}/activities/{activityId}/planning`
+- `POST /projects/{projectId}/estimates/{estimateId}/activities/{activityId}/dependencies`
+- `DELETE /projects/{projectId}/estimates/{estimateId}/activities/{activityId}/dependencies/{dependencyId}`
 - `POST /projects/{projectId}/estimates/{estimateId}/activities/{activityId}/assignments`
+- `PUT /projects/{projectId}/estimates/{estimateId}/activities/{activityId}/assignments/{assignmentId}`
 - `DELETE /projects/{projectId}/estimates/{estimateId}/activities/{activityId}/assignments/{assignmentId}`
 - `POST /projects/{projectId}/estimates/{estimateId}/equipment-assignments/{assignmentId}/crew`
 - `POST /projects/{projectId}/estimates/{estimateId}/staff`
+- `POST /projects/{projectId}/estimates/{estimateId}/resource-rates/{resourceId}/sync`
+- `GET /projects/{projectId}/estimates/{estimateId}/resource-rates`
+- `PUT /projects/{projectId}/estimates/{estimateId}/resource-rates/{sourceCostComponentId}`
 - `GET /projects/{projectId}/estimates/{estimateId}/cost`
+- `GET /projects/{projectId}/estimates/{estimateId}/cost-report`
+- `GET|POST /projects/{projectId}/estimates/{estimateId}/boq-items`
+- `PUT|DELETE /projects/{projectId}/estimates/{estimateId}/boq-items/{boqId}`
+- `GET /projects/{projectId}/estimates/{estimateId}/boq-traceability`
+- `GET|PUT /projects/{projectId}/calendar`
+- `GET|POST /projects/{projectId}/estimates/{estimateId}/pricing-rules`
+- `PUT|DELETE /projects/{projectId}/estimates/{estimateId}/pricing-rules/{ruleId}`
+- `GET /projects/{projectId}/estimates/{estimateId}/pricing-summary`
 
-The client project picker lists every project, switches the active schedule, and lets an Engineer create a project or add a WBS to the active project. New projects are created with a baseline estimate and require an initial WBS code and name.
+The client project picker lists every project and switches the active schedule. Engineers create a project with a baseline estimate first, then add WBS branches from the Schedule page. Activity creation stays disabled until the project has at least one WBS.
 
 The resource referenced by an assignment determines whether it becomes an equipment, personnel, or material assignment. Errors use the standard `application/problem+json` format.
 
-Project currency supports `USD`, `EUR`, and `TRY`. `PUT /projects/{projectId}` accepts two user-defined exchange rates: `usdTryRate` means `1 USD = x TRY`, and `eurTryRate` means `1 EUR = x TRY`. The rates are stored with the project and returned by subsequent GET requests, so they only need to be entered once. When `currencyCode` changes, the saved rates are used if the request does not repeat them. The application derives USD/EUR automatically and converts all resource catalog prices and project additional-cost unit prices before saving the new project currency. Rates are never fetched or assumed externally.
+`cost-report` is the authoritative detailed calculation used by the client report and project overview. It returns the estimate total, project-level costs, and matching WBS/activity breakdowns. Every level exposes personnel, equipment, fuel, material, accommodation, transportation, overhead, tax, and total amounts.
+
+BOQ items keep their own unit price and currency and link to a WBS plus an optional activity. Linking synchronizes the activity quantity/unit. Activity planning calculates duration as `ceil(quantity / dailyProductionRate)` and places working dates on the project calendar. Dependencies support finish-to-start, start-to-start, finish-to-finish, start-to-finish and working-day lag with cycle prevention. Shift paid hours determine effective working hours per day. The Angular **BOQ & planning** page manages all of these records and shows BOQ → WBS → activity traceability.
+
+Project currency supports `USD`, `EUR`, and `TRY`. Catalog cost components carry their own `currencyCode` and act as reusable default prices. When a resource is assigned, its rates are copied into the estimate and converted to the project currency using the project's user-defined `usdTryRate` and `eurTryRate`. Project currency changes convert only these estimate snapshots and project additional costs; the shared resource catalog and other projects are not mutated. The rate-sync endpoint adds missing catalog components, while the rate override endpoint changes a price only for the selected estimate. Rates are never fetched or assumed externally.
+
+Catalog cost components can be edited with tax and validity dates. Existing estimate snapshots remain stable until `resource-rates/{resourceId}/sync?replaceExisting=true` is explicitly requested. Equipment economics can generate monthly depreciation, maintenance and insurance catalog components for owned equipment. Material procurement stores supplier, lead time, minimum order quantity and default waste.
+
+Resource creation accepts `projectId` and `shared` query parameters. A project-specific resource is visible only to its owning project; a shared resource is available to every project. Only the owner project can change the sharing flag. New assignments and rate synchronization reject private resources owned by another project, while existing assignments remain intact when sharing is later disabled.
+
+Only the owner project can delete a project-created resource. Deletion is rejected while the resource is referenced by an activity assignment, equipment crew, or project staff record; those assignments must be removed first. Protected system-wide seed resources cannot be deleted.
+
+Pricing rules are ordered percentage calculations over either authoritative estimated cost or the running total. The pricing summary returns BOQ value, on-cost/risk adders, sales price, gross/net profit, profit margin and BOQ variance. The Angular **Pricing & profit** page edits these rules; Overview consumes the same backend summary.
 
 Data is currently kept in memory. The repository package is deliberately isolated so it can be replaced by JPA persistence without changing controllers.
 

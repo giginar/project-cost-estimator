@@ -22,10 +22,13 @@ public class Activity {
     private BigDecimal plannedQuantity;
     private UnitOfMeasure quantityUnit;
     private BigDecimal plannedDuration;
+    private BigDecimal dailyProductionRate;
+    private boolean autoSchedule;
     private DurationUnit durationUnit;
     private LocalDate plannedStartDate;
     private LocalDate plannedEndDate;
     private WbsItem wbsItem;
     private List<ResourceAssignment> resourceAssignments = new ArrayList<>();
     private List<AdditionalCostItem> additionalCostItems = new ArrayList<>();
+    private List<ActivityDependency> dependencies = new ArrayList<>();
 }

@@ -22,5 +22,8 @@ public class EstimateVersion {
     private List<WbsItem> wbsItems = new ArrayList<>();
     private List<ProjectStaffAssignment> projectStaffAssignments = new ArrayList<>();
     private List<ProjectRate> projectRates = new ArrayList<>();
+    private List<EstimateResourceRate> resourceRates = new ArrayList<>();
+    private List<BoqItem> boqItems = new ArrayList<>();
+    private List<PricingRule> pricingRules = new ArrayList<>();
     private List<AdditionalCostItem> projectLevelCosts = new ArrayList<>();
 }

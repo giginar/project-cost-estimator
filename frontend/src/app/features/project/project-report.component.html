@@ -1,10 +1,44 @@
-<div class="page-heading"><div><p class="eyebrow">{{ t('PROJECT REPORTS', 'PROJE RAPORLARI') }}</p><h1>{{ t('Cost breakdown', 'Maliyet kırılımı') }}</h1><p>{{ projectName() }} · {{ t('WBS and activity-level estimated costs.', 'WBS ve aktivite seviyesinde tahmini maliyetler.') }}</p></div></div>
-<div class="report-summary"><article><small>{{ t('PERSONNEL', 'PERSONEL') }}</small><strong>{{ money(total().personnel) }}</strong></article><article><small>{{ t('EQUIPMENT', 'EKİPMAN') }}</small><strong>{{ money(total().equipment) }}</strong></article><article><small>{{ t('MATERIAL', 'MALZEME') }}</small><strong>{{ money(total().material) }}</strong></article><article><small>{{ t('FUEL / ENERGY', 'YAKIT / ENERJİ') }}</small><strong>{{ money(total().fuel) }}</strong></article><article class="total"><small>{{ t('PROJECT TOTAL', 'PROJE TOPLAMI') }}</small><strong>{{ money(total().total) }}</strong></article></div>
-<section class="report-card">
-  <div class="report-row head"><span>WBS / {{ t('ACTIVITY', 'AKTİVİTE') }}</span><span>{{ t('PERSONNEL', 'PERSONEL') }}</span><span>{{ t('EQUIPMENT', 'EKİPMAN') }}</span><span>{{ t('MATERIAL', 'MALZEME') }}</span><span>{{ t('FUEL', 'YAKIT') }}</span><span>{{ t('TOTAL', 'TOPLAM') }}</span></div>
-  @for (group of groups(); track group.name) {
-    <div class="report-row group"><strong>{{ group.name }}</strong><span>{{ money(group.costs.personnel) }}</span><span>{{ money(group.costs.equipment) }}</span><span>{{ money(group.costs.material) }}</span><span>{{ money(group.costs.fuel) }}</span><b>{{ money(group.costs.total) }}</b></div>
-    @for (item of group.tasks; track item.task.id) { <div class="report-row activity"><span><code>{{ item.task.code }}</code>{{ item.task.name }}</span><span>{{ money(item.costs.personnel) }}</span><span>{{ money(item.costs.equipment) }}</span><span>{{ money(item.costs.material) }}</span><span>{{ money(item.costs.fuel) }}</span><b>{{ money(item.costs.total) }}</b></div> }
-  }
-  <div class="report-row grand"><strong>{{ t('PROJECT TOTAL', 'PROJE TOPLAMI') }}</strong><span>{{ money(total().personnel) }}</span><span>{{ money(total().equipment) }}</span><span>{{ money(total().material) }}</span><span>{{ money(total().fuel) }}</span><b>{{ money(total().total) }}</b></div>
-</section>
+<div class="page-heading">
+  <div>
+    <p class="eyebrow">{{ t('PROJECT REPORTS', 'PROJE RAPORLARI') }}</p>
+    <h1>{{ t('Cost breakdown', 'Maliyet kırılımı') }}</h1>
+    <p>{{ projectName() }} · {{ t('Authoritative WBS and activity costs calculated by the server.', 'Sunucu tarafından hesaplanan WBS ve aktivite maliyetleri.') }}</p>
+  </div>
+</div>
+
+@if (report(); as data) {
+  <div class="report-summary">
+    <article><small>{{ t('PERSONNEL', 'PERSONEL') }}</small><strong>{{ money(data.total.personnelCost) }}</strong></article>
+    <article><small>{{ t('EQUIPMENT', 'EKİPMAN') }}</small><strong>{{ money(data.total.equipmentCost) }}</strong></article>
+    <article><small>{{ t('MATERIAL', 'MALZEME') }}</small><strong>{{ money(data.total.materialCost) }}</strong></article>
+    <article><small>{{ t('FUEL / ENERGY', 'YAKIT / ENERJİ') }}</small><strong>{{ money(data.total.fuelCost) }}</strong></article>
+    <article><small>{{ t('INDIRECT / TAX', 'DOLAYLI / VERGİ') }}</small><strong>{{ money(indirect(data.total)) }}</strong></article>
+    <article class="total"><small>{{ t('PROJECT TOTAL', 'PROJE TOPLAMI') }}</small><strong>{{ money(data.total.totalCost) }}</strong></article>
+  </div>
+
+  <section class="report-card">
+    <div class="report-row head">
+      <span>WBS / {{ t('ACTIVITY', 'AKTİVİTE') }}</span><span>{{ t('PERSONNEL', 'PERSONEL') }}</span><span>{{ t('EQUIPMENT', 'EKİPMAN') }}</span><span>{{ t('MATERIAL', 'MALZEME') }}</span><span>{{ t('FUEL', 'YAKIT') }}</span><span>{{ t('INDIRECT', 'DOLAYLI') }}</span><span>{{ t('TOTAL', 'TOPLAM') }}</span>
+    </div>
+    @if (hasCost(data.projectLevel)) {
+      <div class="report-row project-level">
+        <strong>{{ t('PROJECT-LEVEL COSTS', 'PROJE SEVİYESİ MALİYETLER') }}</strong><span>{{ money(data.projectLevel.personnelCost) }}</span><span>{{ money(data.projectLevel.equipmentCost) }}</span><span>{{ money(data.projectLevel.materialCost) }}</span><span>{{ money(data.projectLevel.fuelCost) }}</span><span>{{ money(indirect(data.projectLevel)) }}</span><b>{{ money(data.projectLevel.totalCost) }}</b>
+      </div>
+    }
+    @for (group of data.wbsItems; track group.wbsId) {
+      <div class="report-row group">
+        <strong><code>{{ group.code }}</code>{{ group.name }}</strong><span>{{ money(group.costs.personnelCost) }}</span><span>{{ money(group.costs.equipmentCost) }}</span><span>{{ money(group.costs.materialCost) }}</span><span>{{ money(group.costs.fuelCost) }}</span><span>{{ money(indirect(group.costs)) }}</span><b>{{ money(group.costs.totalCost) }}</b>
+      </div>
+      @for (activity of group.activities; track activity.activityId) {
+        <div class="report-row activity">
+          <span><code>{{ activity.code }}</code>{{ activity.name }}</span><span>{{ money(activity.costs.personnelCost) }}</span><span>{{ money(activity.costs.equipmentCost) }}</span><span>{{ money(activity.costs.materialCost) }}</span><span>{{ money(activity.costs.fuelCost) }}</span><span>{{ money(indirect(activity.costs)) }}</span><b>{{ money(activity.costs.totalCost) }}</b>
+        </div>
+      }
+    }
+    <div class="report-row grand">
+      <strong>{{ t('PROJECT TOTAL', 'PROJE TOPLAMI') }}</strong><span>{{ money(data.total.personnelCost) }}</span><span>{{ money(data.total.equipmentCost) }}</span><span>{{ money(data.total.materialCost) }}</span><span>{{ money(data.total.fuelCost) }}</span><span>{{ money(indirect(data.total)) }}</span><b>{{ money(data.total.totalCost) }}</b>
+    </div>
+  </section>
+} @else {
+  <div class="report-loading">{{ t('Cost report is being calculated…', 'Maliyet raporu hesaplanıyor…') }}</div>
+}

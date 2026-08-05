@@ -1,15 +1,16 @@
 <div class="resource-window-bar">
   <span class="resource-mark" [class]="type()">{{ type() === 'personnel' ? 'P' : type() === 'equipment' ? 'E' : 'M' }}</span>
   <div><small>{{ t('RESOURCE CATALOG', 'KAYNAK KATALOĞU') }}</small><strong>{{ title() }}</strong><p>{{ filteredResources().length }} {{ t('available resources', 'kullanılabilir kaynak') }}</p></div>
-  <button class="primary-button" (click)="openDialog()">＋ {{ t('Add', 'Ekle') }} {{ title().toLowerCase() }}</button>
+  @if (!readonly()) { <button class="primary-button" (click)="openDialog()">＋ {{ t('Add', 'Ekle') }} {{ title().toLowerCase() }}</button> }
 </div>
+@if (actionMessage()) { <p class="resource-action-message" role="status">{{ actionMessage() }}</p> }
 
 <section class="catalog-card">
   <header><div><h2>{{ title() }} {{ t('library', 'kütüphanesi') }}</h2><span>{{ filteredResources().length }} {{ t('resources', 'kaynak') }}</span></div><label><span>⌕</span><input #query type="search" [placeholder]="t('Search ', 'Ara: ') + title().toLowerCase()" (input)="search.set(query.value)" /></label></header>
   <div class="catalog-table">
-    <div class="table-head"><span>{{ t('CODE', 'KOD') }}</span><span>{{ t('NAME', 'AD') }}</span><span>{{ subtypeLabel().toUpperCase() }}</span><span>{{ t('ECONOMICS', 'EKONOMİK VERİLER') }}</span></div>
+    <div class="table-head"><span>{{ t('CODE', 'KOD') }}</span><span>{{ t('NAME', 'AD') }}</span><span>{{ subtypeLabel().toUpperCase() }}</span><span>{{ t('ECONOMICS', 'EKONOMİK VERİLER') }}</span><span>{{ t('SCOPE', 'KAPSAM') }}</span></div>
     @for (resource of filteredResources(); track resource.id) {
-      <article><code>{{ resource.code }}</code><div><strong>{{ resource.name }}</strong><small>{{ resource.description || 'No description' }}</small></div><span>{{ resource.subtype }}</span><b>{{ economicSummary(resource) }}</b></article>
+      <article><code>{{ resource.code }}</code><div><strong>{{ resource.name }}</strong><small>{{ resource.description || t('No description', 'Açıklama yok') }}</small></div><span>{{ resource.subtype }}</span><b>{{ economicSummary(resource) }}</b><span class="resource-scope" [class.shared]="resource.shared"><b>{{ resource.assignable === false ? t('Historical use', 'Geçmiş kullanım') : resource.shared ? t('Shared', 'Ortak') : t('Project only', 'Yalnız proje') }}</b><span class="scope-actions">@if (canChangeSharing(resource)) { <button (click)="sharingChange.emit({resourceId: resource.id, shared: !resource.shared})">{{ resource.shared ? t('Make project-only', 'Projeye özel yap') : t('Share', 'Paylaş') }}</button> }@if (!readonly()) { <button class="delete-resource" [disabled]="!canDelete(resource)" [title]="deleteReason(resource)" [attr.aria-label]="deleteReason(resource)" (click)="canDelete(resource) && deleteCandidate.set(resource)">⌫ {{ t('Delete', 'Sil') }}</button> }</span></span></article>
     } @empty {
       <div class="empty"><strong>No {{ title().toLowerCase() }} added yet</strong><p>Use “Add {{ title().toLowerCase() }}” to create the first resource.</p></div>
     }
@@ -24,12 +25,14 @@
         <label><span>Code *</span><input type="text" [value]="draft().code" (input)="updateDraft('code', $any($event.target).value)" placeholder="e.g. {{ type() === 'personnel' ? 'PER-01' : type() === 'equipment' ? 'EQ-01' : 'MAT-01' }}" required /></label>
         <label><span>{{ subtypeLabel() }} *</span><input type="text" [value]="draft().subtype" (input)="updateDraft('subtype', $any($event.target).value)" [placeholder]="subtypeLabel()" required /></label>
         <label class="wide"><span>Name *</span><input type="text" [value]="draft().name" (input)="updateDraft('name', $any($event.target).value)" [placeholder]="title() + ' name'" required /></label>
+        <label class="wide sharing-option"><input type="checkbox" [checked]="draft().shared" (change)="updateDraft('shared', $any($event.target).checked)" /><span><b>{{ t('Shared resource', 'Ortak kaynak') }}</b><small>{{ t('Make this resource available to every project.', 'Bu kaynağı tüm projelerde kullanılabilir yap.') }}</small></span></label>
         @if (type() === 'material') { <label class="wide"><span>Default unit *</span><select [value]="draft().defaultUnit" (change)="updateDraft('defaultUnit', $any($event.target).value)"><option value="PIECE">Piece</option><option value="KILOGRAM">Kilogram</option><option value="TON">Ton</option><option value="LITER">Liter</option><option value="METER">Meter</option><option value="SQUARE_METER">Square meter</option><option value="CUBIC_METER">Cubic meter</option></select></label> }
         <label><span>{{ type() === 'personnel' ? 'Salary' : type() === 'equipment' ? 'Equipment rate' : 'Unit price' }} ({{ currency() }})</span><input type="number" min="0" step="0.01" [value]="draft().unitPrice ?? ''" (input)="updateDraft('unitPrice', $any($event.target).value === '' ? null : $any($event.target).valueAsNumber)" placeholder="0.00" /></label>
         @if (type() !== 'material') { <label><span>Rate period</span><select [value]="draft().calculationBasis" (change)="updateDraft('calculationBasis', $any($event.target).value)"><option value="PER_HOUR">Hourly</option><option value="PER_DAY">Daily</option><option value="PER_WEEK">Weekly</option><option value="PER_MONTH">Monthly</option></select></label> }
         @if (type() === 'equipment') {
           <label><span>Fuel / energy type</span><select [value]="draft().fuelType" (change)="updateDraft('fuelType', $any($event.target).value)"><option value="DIESEL">Diesel</option><option value="GASOLINE">Gasoline</option><option value="MARINE_DIESEL">Marine diesel</option><option value="ELECTRICITY">Electricity</option></select></label>
-          <label><span>Consumption per hour</span><input type="number" min="0" step="0.01" [value]="draft().fuelConsumption ?? ''" (input)="updateDraft('fuelConsumption', $any($event.target).value === '' ? null : $any($event.target).valueAsNumber)" placeholder="0.00" /></label>
+          <label><span>{{ t('Operating consumption / hour', 'Çalışma tüketimi / saat') }}</span><input type="number" min="0" step="0.01" [value]="draft().fuelConsumption ?? ''" (input)="updateDraft('fuelConsumption', $any($event.target).value === '' ? null : $any($event.target).valueAsNumber)" placeholder="0.00" /></label>
+          <label><span>{{ t('Standby consumption / hour', 'Bekleme tüketimi / saat') }}</span><input type="number" min="0" step="0.01" [value]="draft().standbyFuelConsumption ?? ''" (input)="updateDraft('standbyFuelConsumption', $any($event.target).value === '' ? null : $any($event.target).valueAsNumber)" placeholder="0.00" /></label>
           <label class="wide"><span>Fuel / energy unit price ({{ currency() }})</span><input type="number" min="0" step="0.01" [value]="draft().fuelUnitPrice ?? ''" (input)="updateDraft('fuelUnitPrice', $any($event.target).value === '' ? null : $any($event.target).valueAsNumber)" placeholder="0.00" /></label>
         }
         <label class="wide"><span>Description</span><textarea [value]="draft().description" (input)="updateDraft('description', $any($event.target).value)" placeholder="Optional description"></textarea></label>
@@ -37,4 +40,11 @@
       </form>
     </section>
   </div>
+}
+
+@if (deleteCandidate()) {
+  <div class="catalog-dialog-backdrop" (mousedown)="deleteCandidate.set(null)"><section class="delete-dialog" role="alertdialog" aria-modal="true" (mousedown)="$event.stopPropagation()">
+    <header><small>{{ t('DELETE RESOURCE', 'KAYNAĞI SİL') }}</small><h2>{{ deleteCandidate()!.name }}</h2><p>{{ t('This permanently removes the resource and its catalog costs. Resources currently used by a project cannot be deleted.', 'Bu işlem kaynağı ve katalog maliyetlerini kalıcı olarak siler. Bir projede kullanılan kaynaklar silinemez.') }}</p></header>
+    <footer><button class="cancel" (click)="deleteCandidate.set(null)">{{ t('Cancel', 'İptal') }}</button><button class="danger" (click)="confirmDelete()">{{ t('Delete resource', 'Kaynağı sil') }}</button></footer>
+  </section></div>
 }

@@ -16,6 +16,12 @@ public class EquipmentResource extends Resource {
     private BigDecimal capacity;
     private UnitOfMeasure capacityUnit;
     private boolean owned;
+    private BigDecimal acquisitionCost;
+    private BigDecimal residualValue;
+    private Integer usefulLifeMonths;
+    private BigDecimal maintenanceRatePercentage;
+    private BigDecimal insuranceRatePercentage;
+    private java.util.Currency economicsCurrency;
     private List<EquipmentComposition> parentCompositions = new ArrayList<>();
     private List<EquipmentComposition> childCompositions = new ArrayList<>();
     private List<FuelConsumption> fuelConsumptions = new ArrayList<>();

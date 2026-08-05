@@ -12,12 +12,12 @@
     <nav aria-label="Main navigation">
       <a [class.active]="currentPage() === 'overview'" (click)="currentPage.set('overview')"><span class="nav-icon">⌂</span><span>{{ t('Overview', 'Genel Bakış') }}</span></a>
       <a [class.active]="currentPage() === 'schedule'" (click)="currentPage.set('schedule')"><span class="nav-icon">▤</span><span>{{ t('Schedule', 'İş Programı') }}</span></a>
+      <a [class.active]="currentPage() === 'planning'" (click)="currentPage.set('planning')"><span class="nav-icon">▦</span><span>{{ t('BOQ & planning', 'BOQ ve Planlama') }}</span></a>
+      <div class="nav-group"><span class="nav-group-title"><span class="nav-icon">♙</span><b>{{ t('Resources', 'Kaynaklar') }}</b></span><a class="nav-child" [class.active]="currentPage() === 'personnel'" (click)="currentPage.set('personnel')"><span>{{ t('Personnel', 'Personel') }}</span></a><a class="nav-child" [class.active]="currentPage() === 'equipment'" (click)="currentPage.set('equipment')"><span>{{ t('Equipment', 'Ekipman') }}</span></a><a class="nav-child" [class.active]="currentPage() === 'material'" (click)="currentPage.set('material')"><span>{{ t('Material', 'Malzeme') }}</span></a></div>
       @if (isEngineer()) {
-        <a [class.active]="currentPage() === 'personnel'" (click)="currentPage.set('personnel')"><span class="nav-icon">♙</span><span>{{ t('Personnel', 'Personel') }}</span></a>
-        <a [class.active]="currentPage() === 'equipment'" (click)="currentPage.set('equipment')"><span class="nav-icon">◇</span><span>{{ t('Equipment', 'Ekipman') }}</span></a>
-        <a [class.active]="currentPage() === 'material'" (click)="currentPage.set('material')"><span class="nav-icon">▧</span><span>{{ t('Material', 'Malzeme') }}</span></a>
         <a [class.active]="currentPage() === 'cost-library'" (click)="currentPage.set('cost-library')"><span class="nav-icon">◫</span><span>{{ t('Cost library', 'Maliyet Kütüphanesi') }}</span></a>
       }
+      <a [class.active]="currentPage() === 'pricing'" (click)="currentPage.set('pricing')"><span class="nav-icon">%</span><span>{{ t('Pricing & profit', 'Fiyatlandırma ve Kâr') }}</span></a>
       <a [class.active]="currentPage() === 'report'" (click)="currentPage.set('report')"><span class="nav-icon">↗</span><span>{{ t('Reports', 'Raporlar') }}</span></a>
     </nav>
     <div class="sidebar-footer">
@@ -37,7 +37,7 @@
             <div class="project-list">
               @for (project of projects(); track project.id) { <button [class.active]="project.id === scheduleContext?.projectId" (click)="switchProject(project.id)"><span><strong>{{ project.name }}</strong><small>{{ project.code }}</small></span>@if (project.id === scheduleContext?.projectId) { <b>✓</b> }</button> }
             </div>
-            @if (isEngineer()) { <footer><button (click)="openNewProjectDialog()">＋ {{ t('Create new project', 'Yeni proje oluştur') }}</button><button [disabled]="!scheduleContext" (click)="openWbsDialog()">＋ {{ t('Add WBS to current project', 'Aktif projeye WBS ekle') }}</button></footer> }
+            @if (isEngineer()) { <footer><button (click)="openNewProjectDialog()">＋ {{ t('Create new project', 'Yeni proje oluştur') }}</button></footer> }
           </div>
         }
       </div>
@@ -45,25 +45,29 @@
     </header>
 
     @if (currentPage() === 'overview') {
-      <section class="content"><app-project-overview [projectName]="projectName()" [projectStart]="projectStart()" [projectEnd]="projectEnd()" [currency]="currencyCode()" [language]="language()" [tasks]="tasks()" [resources]="resources()" /></section>
+      <section class="content"><app-project-overview [projectName]="projectName()" [projectStart]="projectStart()" [projectEnd]="projectEnd()" [currency]="currencyCode()" [language]="language()" [tasks]="tasks()" [resources]="resources()" [projectCost]="costReport()?.total?.totalCost ?? null" [pricing]="pricingSummary()" /></section>
     } @else if (currentPage() === 'schedule') {
     <section class="content">
       <div class="project-window-bar">
         <span class="summary-icon blue">◫</span>
         <div><small>{{ t('PROJECT WINDOW', 'PROJE TARİH ARALIĞI') }}</small><strong>{{ formatDate(projectStart()) }} · {{ formatDate(projectEnd()) }}</strong><p>{{ tasks().length }} {{ t('scheduled activities', 'planlanmış aktivite') }}</p></div>
-        @if (isEngineer()) { <button class="primary-button" (click)="openActivityDialog()">＋ {{ t('Add activity', 'Aktivite ekle') }}</button> }
+        @if (isEngineer()) { <div class="schedule-actions"><button class="secondary-button" (click)="openWbsDialog()">＋ {{ t('Add WBS', 'WBS ekle') }}</button><button class="primary-button" [disabled]="!wbsItems().length" (click)="openActivityDialog()">＋ {{ t('Add activity', 'Aktivite ekle') }}</button></div> }
       </div>
 
       <app-gantt [tasks]="tasks()" [resources]="resources()" [currency]="currencyCode()" [language]="language()" [readonly]="!isEngineer()" (taskChange)="updateTask($event)" (resourcesAdd)="addResources($event)" />
     </section>
+    } @else if (currentPage() === 'planning') {
+      <section class="content"><app-planning [boqItems]="boqReport()?.items ?? []" [totalBoqValue]="boqReport()?.totalBoqValue ?? 0" [wbsItems]="wbsItems()" [tasks]="tasks()" [calendar]="workCalendar()" [currency]="currencyCode()" [language]="language()" [readonly]="!isEngineer()" (boqSave)="saveBoq($event)" (boqDelete)="deleteBoq($event)" (planningSave)="saveActivityPlanning($event)" (dependencyAdd)="addDependency($event)" (dependencyDelete)="deleteDependency($event)" (calendarSave)="saveCalendar($event)" /></section>
     } @else if (currentPage() === 'cost-library') {
-      <section class="content"><app-cost-library [resources]="resources()" [currency]="currencyCode()" [language]="language()" (costCreate)="createCost($event)" /></section>
+      <section class="content"><app-cost-library [resources]="resources()" [projectRates]="projectRates()" [projectCost]="costReport()?.total?.totalCost ?? null" [currency]="currencyCode()" [language]="language()" (costSave)="saveCost($event)" (projectRateSync)="syncProjectRates($event)" (projectRateUpdate)="updateProjectRate($event)" (equipmentEconomicsSave)="saveEquipmentEconomics($event)" (materialProcurementSave)="saveMaterialProcurement($event)" /></section>
+    } @else if (currentPage() === 'pricing') {
+      <section class="content"><app-pricing [rules]="pricingRules()" [summary]="pricingSummary()" [currency]="currencyCode()" [language]="language()" [readonly]="!isEngineer()" (ruleSave)="savePricingRule($event)" (ruleDelete)="deletePricingRule($event)" /></section>
     } @else if (currentPage() === 'report') {
-      <section class="content"><app-project-report [projectName]="projectName()" [currency]="currencyCode()" [language]="language()" [tasks]="tasks()" [resources]="resources()" /></section>
+      <section class="content"><app-project-report [projectName]="projectName()" [currency]="currencyCode()" [language]="language()" [report]="costReport()" /></section>
     } @else if (currentPage() === 'settings') {
       <section class="content"><app-project-settings [settings]="settings()" [language]="language()" [saving]="settingsSaving()" [message]="settingsMessage()" (settingsSave)="saveSettings($event)" /></section>
     } @else {
-      <section class="content"><app-resource-catalog [type]="$any(currentPage())" [resources]="resources()" [currency]="currencyCode()" [language]="language()" (resourceCreate)="createResource($event)" /></section>
+      <section class="content"><app-resource-catalog [type]="$any(currentPage())" [resources]="resources()" [currency]="currencyCode()" [language]="language()" [readonly]="!isEngineer()" [activeProjectId]="scheduleContext?.projectId ?? null" [actionMessage]="resourceActionMessage()" (resourceCreate)="createResource($event)" (sharingChange)="updateResourceSharing($event)" (resourceDelete)="deleteResource($event)" /></section>
     }
   </main>
 </div>
@@ -85,6 +89,11 @@
         <label class="wide"><span>{{ t('Activity name', 'Aktivite adı') }} *</span><input type="text" [value]="activityDraft().name" (input)="updateActivityDraft('name', $any($event.target).value)" [placeholder]="t('Enter activity name', 'Aktivite adını girin')" required /></label>
         <label><span>{{ t('Start date', 'Başlangıç tarihi') }} *</span><input type="date" [value]="activityDraft().start" (input)="updateActivityDraft('start', $any($event.target).value)" required /></label>
         <label><span>{{ t('Finish date', 'Bitiş tarihi') }} *</span><input type="date" [value]="activityDraft().end" [min]="activityDraft().start" (input)="updateActivityDraft('end', $any($event.target).value)" required /></label>
+        <div class="dialog-section-title wide"><span>{{ t('QUANTITY & PRODUCTIVITY', 'MİKTAR VE ÜRETKENLİK') }}</span><p>{{ t('Optional automatic working-day duration calculation.', 'İsteğe bağlı otomatik çalışma günü süresi hesabı.') }}</p></div>
+        <label><span>{{ t('Planned quantity', 'Planlanan miktar') }}</span><input type="number" min="0" step="0.01" [value]="activityDraft().plannedQuantity" (input)="updateActivityDraft('plannedQuantity', $any($event.target).valueAsNumber)" /></label>
+        <label><span>{{ t('Quantity unit', 'Miktar birimi') }}</span><select [value]="activityDraft().quantityUnit" (change)="updateActivityDraft('quantityUnit', $any($event.target).value)"><option>PIECE</option><option>KILOGRAM</option><option>TON</option><option>LITER</option><option>METER</option><option>SQUARE_METER</option><option>CUBIC_METER</option></select></label>
+        <label><span>{{ t('Daily production capacity', 'Günlük üretim kapasitesi') }}</span><input type="number" min="0.01" step="0.01" [value]="activityDraft().dailyProductionRate ?? ''" (input)="updateActivityDraft('dailyProductionRate', $any($event.target).value === '' ? null : $any($event.target).valueAsNumber)" /></label>
+        <label class="activity-check"><input type="checkbox" [checked]="activityDraft().autoSchedule" (change)="updateActivityDraft('autoSchedule', $any($event.target).checked)" /><span>{{ t('Calculate duration automatically', 'Süreyi otomatik hesapla') }}</span></label>
         @if (activityError()) { <p class="activity-error" role="alert">{{ activityError() }}</p> }
         <footer><button type="button" class="cancel" [disabled]="activitySaving()" (click)="activityDialogOpen.set(false)">Cancel</button><button type="submit" class="save" [disabled]="activitySaving() || !scheduleContext">{{ activitySaving() ? 'Saving…' : 'Add activity' }}</button></footer>
       </form>
@@ -95,7 +104,7 @@
 @if (newProjectDialogOpen()) {
   <div class="activity-dialog-backdrop" (mousedown)="!projectCreating() && newProjectDialogOpen.set(false)">
     <section class="activity-dialog project-dialog" (mousedown)="$event.stopPropagation()">
-      <header><div><small>PROJECT PORTFOLIO</small><h2>{{ t('Create new project', 'Yeni proje oluştur') }}</h2><p>{{ t('Every project starts with a baseline estimate and its first WBS.', 'Her proje bir başlangıç keşfi ve ilk WBS kalemiyle oluşturulur.') }}</p></div><button (click)="newProjectDialogOpen.set(false)">×</button></header>
+      <header><div><small>PROJECT PORTFOLIO</small><h2>{{ t('Create new project', 'Yeni proje oluştur') }}</h2><p>{{ t('Create the project first; add its WBS structure from the schedule afterwards.', 'Önce projeyi oluşturun; WBS yapısını daha sonra iş programından ekleyin.') }}</p></div><button (click)="newProjectDialogOpen.set(false)">×</button></header>
       <form (submit)="$event.preventDefault(); createProject()">
         <label><span>{{ t('Project code', 'Proje kodu') }} *</span><input [value]="newProjectDraft().code" (input)="updateNewProject('code', $any($event.target).value)" required /></label>
         <label><span>{{ t('Currency', 'Para birimi') }} *</span><select [value]="newProjectDraft().currencyCode" (change)="updateNewProject('currencyCode', $any($event.target).value)"><option value="USD">USD</option><option value="EUR">EUR</option><option value="TRY">TRY</option></select></label>
@@ -103,9 +112,6 @@
         <label class="wide"><span>{{ t('Description', 'Açıklama') }}</span><input [value]="newProjectDraft().description" (input)="updateNewProject('description', $any($event.target).value)" /></label>
         <label><span>{{ t('Start date', 'Başlangıç tarihi') }} *</span><input type="date" [value]="newProjectDraft().start" (input)="updateNewProject('start', $any($event.target).value)" required /></label>
         <label><span>{{ t('Finish date', 'Bitiş tarihi') }} *</span><input type="date" [value]="newProjectDraft().end" [min]="newProjectDraft().start" (input)="updateNewProject('end', $any($event.target).value)" required /></label>
-        <div class="dialog-section-title wide"><span>INITIAL WBS</span><p>{{ t('Add the first scope branch for this project.', 'Projenin ilk kapsam kırılımını ekleyin.') }}</p></div>
-        <label><span>WBS {{ t('code', 'kodu') }} *</span><input [value]="newProjectDraft().wbsCode" (input)="updateNewProject('wbsCode', $any($event.target).value)" required /></label>
-        <label><span>WBS {{ t('name', 'adı') }} *</span><input [value]="newProjectDraft().wbsName" (input)="updateNewProject('wbsName', $any($event.target).value)" required /></label>
         @if (projectActionError()) { <p class="activity-error">{{ projectActionError() }}</p> }
         <footer><button type="button" class="cancel" (click)="newProjectDialogOpen.set(false)">{{ t('Cancel', 'İptal') }}</button><button class="save" [disabled]="projectCreating()">{{ projectCreating() ? t('Creating…', 'Oluşturuluyor…') : t('Create project', 'Projeyi oluştur') }}</button></footer>
       </form>

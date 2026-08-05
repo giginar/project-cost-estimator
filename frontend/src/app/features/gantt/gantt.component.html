@@ -96,7 +96,24 @@
           <div class="resource-group">
             <h4>{{ type === 'equipment' ? t('Equipment', 'Ekipman') : type === 'personnel' ? t('Personnel', 'Personel') : t('Material', 'Malzeme') }}</h4>
             @for (resource of resourcesByType($any(type)); track resource.id) {
-              <label><input type="checkbox" [checked]="selectedResourceIds().has(resource.id)" (change)="toggleResource(resource.id)" /><span><strong>{{ resource.name }}</strong><small>{{ resource.code }} · {{ resource.subtype }}</small></span></label>
+              <label><input type="checkbox" [checked]="selectedResourceIds().has(resource.id)" (change)="toggleResource(resource)" /><span><strong>{{ resource.name }}</strong><small>{{ resource.code }} · {{ resource.subtype }}</small></span></label>
+              @if (selectedResourceIds().has(resource.id)) {
+                <div class="assignment-fields">
+                  @if (resource.type !== 'material') {
+                    <label><span>{{ t('Quantity', 'Adet') }}</span><input type="number" min="0.01" step="0.01" [value]="assignmentDraft(resource).quantity" (input)="updateAssignment(resource, 'quantity', $any($event.target).valueAsNumber)" /></label>
+                    <label><span>{{ t('Utilization %', 'Kullanım %') }}</span><input type="number" min="0" max="100" step="1" [value]="assignmentDraft(resource).utilizationRate" (input)="updateAssignment(resource, 'utilizationRate', $any($event.target).valueAsNumber)" /></label>
+                  }
+                  @if (resource.type === 'personnel') {
+                    <label class="wide"><span>{{ t('Planned work (person-hour)', 'Planlanan iş (kişi-saat)') }}</span><input type="number" min="0" step="0.5" [value]="assignmentDraft(resource).plannedWork" (input)="updateAssignment(resource, 'plannedWork', $any($event.target).valueAsNumber)" /></label>
+                  } @else if (resource.type === 'equipment') {
+                    <label><span>{{ t('Operating hours / day', 'Çalışma saati / gün') }}</span><input type="number" min="0" step="0.5" [value]="assignmentDraft(resource).operatingHoursPerDay" (input)="updateAssignment(resource, 'operatingHoursPerDay', $any($event.target).valueAsNumber)" /></label>
+                    <label><span>{{ t('Standby hours / day', 'Bekleme saati / gün') }}</span><input type="number" min="0" step="0.5" [value]="assignmentDraft(resource).standbyHoursPerDay" (input)="updateAssignment(resource, 'standbyHoursPerDay', $any($event.target).valueAsNumber)" /></label>
+                  } @else {
+                    <label><span>{{ t('Required quantity', 'İhtiyaç miktarı') }}</span><input type="number" min="0" step="0.01" [value]="assignmentDraft(resource).requiredQuantity" (input)="updateAssignment(resource, 'requiredQuantity', $any($event.target).valueAsNumber)" /></label>
+                    <label><span>{{ t('Waste %', 'Fire %') }}</span><input type="number" min="0" step="0.1" [value]="assignmentDraft(resource).wastePercentage" (input)="updateAssignment(resource, 'wastePercentage', $any($event.target).valueAsNumber)" /></label>
+                  }
+                </div>
+              }
             } @empty { <p>No {{ type }} resources found.</p> }
           </div>
         }

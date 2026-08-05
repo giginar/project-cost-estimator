@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Currency;
 import java.util.UUID;
 
 @Getter @Setter @NoArgsConstructor
@@ -17,10 +18,12 @@ public class CostComponent {
     private String name;
     private CalculationBasis calculationBasis;
     private BigDecimal unitPrice;
+    private Currency currency;
     private UnitOfMeasure unit;
     private boolean taxable;
     private BigDecimal taxRate;
     private LocalDate validFrom;
     private LocalDate validTo;
+    private boolean generated;
     private Resource resource;
 }

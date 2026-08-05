@@ -14,10 +14,10 @@ describe('App', () => {
     expect(app).toBeTruthy();
   });
 
-  it('should render the schedule heading', async () => {
+  it('should render the authentication landing heading', async () => {
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain('Work programme');
+    expect(compiled.querySelector('h1')?.textContent).toContain('Plan resources.');
   });
 });

@@ -1,0 +1,31 @@
+<header class="pricing-head">
+  <div><small>{{ t('PHASE 4 · PRICING ENGINE', 'FAZ 4 · FİYATLANDIRMA MOTORU') }}</small><h1>{{ t('Cost, risk and profit', 'Maliyet, risk ve kâr') }}</h1><p>{{ t('Build the sales price sequentially from authoritative estimated cost.', 'Satış fiyatını güvenilir tahmini maliyet üzerinden sıralı olarak oluşturun.') }}</p></div>
+  @if (!readonly()) { <button (click)="open()">＋ {{ t('Add pricing rule', 'Fiyatlandırma kuralı ekle') }}</button> }
+</header>
+<section class="pricing-summary">
+  <article><small>{{ t('ESTIMATED COST', 'TAHMİNİ MALİYET') }}</small><strong>{{ money(summary()?.estimatedCost) }}</strong></article>
+  <article><small>{{ t('ON-COSTS & RISK', 'EK MALİYET VE RİSK') }}</small><strong>{{ money(summary()?.nonProfitAdders) }}</strong></article>
+  <article><small>{{ t('SALES PRICE', 'SATIŞ FİYATI') }}</small><strong>{{ money(summary()?.salesPrice) }}</strong></article>
+  <article class="profit"><small>{{ t('NET PROFIT', 'NET KÂR') }}</small><strong>{{ money(summary()?.netProfit) }}</strong><span>%{{ summary()?.profitMarginPercentage ?? 0 }}</span></article>
+  <article><small>BOQ</small><strong>{{ money(summary()?.boqValue) }}</strong><span>{{ t('Variance', 'Fark') }}: {{ money(summary()?.boqVariance) }}</span></article>
+</section>
+<section class="rules">
+  <header><span>{{ t('ORDER', 'SIRA') }}</span><span>{{ t('RULE', 'KURAL') }}</span><span>{{ t('TYPE', 'TÜR') }}</span><span>{{ t('BASE', 'MATRAH') }}</span><span>%</span><span>{{ t('AMOUNT', 'TUTAR') }}</span><span></span></header>
+  @for (rule of rules(); track rule.id) {
+    <article [class.inactive]="!rule.active"><b>{{ rule.sequence }}</b><span><strong>{{ rule.name }}</strong><small>{{ rule.active ? t('Active', 'Aktif') : t('Inactive', 'Pasif') }}</small></span><span>{{ rule.type }}</span><span>{{ rule.base === 'RUNNING_TOTAL' ? t('Running total', 'Yürüyen toplam') : t('Estimated cost', 'Tahmini maliyet') }}</span><b>%{{ rule.percentage }}</b><strong>{{ money(summary()?.lines?.find(line => line.ruleId === rule.id)?.amount) }}</strong><span class="actions">@if (!readonly()) { <button (click)="open(rule)">{{ t('Edit', 'Düzenle') }}</button><button class="delete" (click)="ruleDelete.emit(rule.id)">×</button> }</span></article>
+  } @empty { <p class="empty">{{ t('No pricing rules yet. Add overhead, risk, tax and profit rules.', 'Henüz fiyatlandırma kuralı yok. Genel gider, risk, vergi ve kâr kuralları ekleyin.') }}</p> }
+</section>
+@if (dialogOpen()) {
+  <div class="backdrop" (mousedown)="dialogOpen.set(false)"><section class="dialog" (mousedown)="$event.stopPropagation()">
+    <header><div><small>{{ t('PRICING RULE', 'FİYATLANDIRMA KURALI') }}</small><h2>{{ draft().id ? t('Edit rule', 'Kuralı düzenle') : t('Add rule', 'Kural ekle') }}</h2></div><button (click)="dialogOpen.set(false)">×</button></header>
+    <form (submit)="$event.preventDefault(); submit()">
+      <label class="wide"><span>{{ t('Name', 'Ad') }} *</span><input [value]="draft().name" (input)="update('name', $any($event.target).value)" required /></label>
+      <label><span>{{ t('Type', 'Tür') }}</span><select [value]="draft().type" (change)="update('type', $any($event.target).value)"><option>OVERHEAD</option><option>RISK</option><option>CONTINGENCY</option><option>GUARANTEE</option><option>FINANCING</option><option>TAX</option><option>PROFIT</option></select></label>
+      <label><span>{{ t('Percentage', 'Oran') }} %</span><input type="number" min="0" step="0.01" [value]="draft().percentage" (input)="update('percentage', $any($event.target).valueAsNumber)" /></label>
+      <label><span>{{ t('Calculation base', 'Hesaplama matrahı') }}</span><select [value]="draft().base" (change)="update('base', $any($event.target).value)"><option value="ESTIMATED_COST">{{ t('Estimated cost', 'Tahmini maliyet') }}</option><option value="RUNNING_TOTAL">{{ t('Running total', 'Yürüyen toplam') }}</option></select></label>
+      <label><span>{{ t('Sequence', 'Sıra') }}</span><input type="number" min="0" [value]="draft().sequence" (input)="update('sequence', $any($event.target).valueAsNumber)" /></label>
+      <label class="check wide"><input type="checkbox" [checked]="draft().active" (change)="update('active', $any($event.target).checked)" /><span>{{ t('Active', 'Aktif') }}</span></label>
+      <footer><button type="button" class="cancel" (click)="dialogOpen.set(false)">{{ t('Cancel', 'İptal') }}</button><button class="save">{{ t('Save rule', 'Kuralı kaydet') }}</button></footer>
+    </form>
+  </section></div>
+}

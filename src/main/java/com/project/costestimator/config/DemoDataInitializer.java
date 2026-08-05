@@ -47,6 +47,14 @@ public class DemoDataInitializer implements ApplicationRunner {
         var finalSurvey = addActivity(projectId, estimateId, new SeedActivity(closeout.id(), "4.1", "Final hydrographic survey", ActivityType.WORK, "2026-09-14", "2026-09-21"));
         var demobilization = addActivity(projectId, estimateId, new SeedActivity(closeout.id(), "4.2", "Demobilization", ActivityType.DEMOBILIZATION, "2026-09-21", "2026-09-26"));
 
+        projects.updateActivityPlanning(projectId, estimateId, areaA.id(), new ActivityPlanningRequest(new BigDecimal("13000"), UnitOfMeasure.CUBIC_METER, new BigDecimal("1000"), true, LocalDate.of(2026, 8, 12)));
+        projects.updateActivityPlanning(projectId, estimateId, areaB.id(), new ActivityPlanningRequest(new BigDecimal("14000"), UnitOfMeasure.CUBIC_METER, new BigDecimal("1000"), true, LocalDate.of(2026, 8, 24)));
+        projects.addDependency(projectId, estimateId, areaB.id(), new DependencyRequest(areaA.id(), DependencyType.START_TO_START, 8));
+        projects.addBoqItem(projectId, estimateId, new BoqRequest("BOQ-2.1", "Dredging area A", UnitOfMeasure.CUBIC_METER, new BigDecimal("13000"), new BigDecimal("18.50"), "USD", marineWorks.id(), areaA.id()));
+        projects.addBoqItem(projectId, estimateId, new BoqRequest("BOQ-2.2", "Dredging area B", UnitOfMeasure.CUBIC_METER, new BigDecimal("14000"), new BigDecimal("19.25"), "USD", marineWorks.id(), areaB.id()));
+        projects.addBoqItem(projectId, estimateId, new BoqRequest("BOQ-3.1", "Disposal area grading", UnitOfMeasure.CUBIC_METER, new BigDecimal("850"), new BigDecimal("7.80"), "USD", landOperations.id(), grading.id()));
+        seedPricing(projectId, estimateId);
+
         var operator = personnel("PER-001", "Dredge Operator", "Marine equipment operator", new BigDecimal("42"), CalculationBasis.PER_HOUR);
         var surveyor = personnel("PER-002", "Hydrographic Surveyor", "Hydrographic survey specialist", new BigDecimal("55"), CalculationBasis.PER_HOUR);
         var foreman = personnel("PER-003", "Site Foreman", "Marine works supervisor", new BigDecimal("480"), CalculationBasis.PER_DAY);
@@ -155,6 +163,13 @@ public class DemoDataInitializer implements ApplicationRunner {
 
         projects.addCrew(projectId, estimateId, channelDredger.id(), new CrewRequest(operator.id(), "Lead dredge operator", new BigDecimal("2"), BigDecimal.valueOf(8), true));
         projects.addStaff(projectId, estimateId, new StaffRequest(foreman.id(), "Marine construction manager", BigDecimal.ONE, BigDecimal.valueOf(75), LocalDate.of(2027, 1, 12), LocalDate.of(2027, 11, 30)));
+        seedPricing(projectId, estimateId);
+    }
+
+    private void seedPricing(UUID projectId, UUID estimateId) {
+        projects.addPricingRule(projectId, estimateId, new PricingRuleRequest(PricingRuleType.OVERHEAD, "Head office overhead", new BigDecimal("5"), PricingBase.ESTIMATED_COST, 1, true));
+        projects.addPricingRule(projectId, estimateId, new PricingRuleRequest(PricingRuleType.RISK, "Project risk", new BigDecimal("3"), PricingBase.RUNNING_TOTAL, 2, true));
+        projects.addPricingRule(projectId, estimateId, new PricingRuleRequest(PricingRuleType.PROFIT, "Target profit", new BigDecimal("12"), PricingBase.RUNNING_TOTAL, 3, true));
     }
 
     private WbsView addWbs(UUID projectId, UUID estimateId, String code, String name, int sequence) {
@@ -167,7 +182,7 @@ public class DemoDataInitializer implements ApplicationRunner {
         BigDecimal duration = BigDecimal.valueOf(ChronoUnit.DAYS.between(start, end) + 1);
         return projects.addActivity(projectId, estimateId, seed.wbsId(), new ActivityRequest(
                 seed.code(), seed.name(), null, seed.type(), null, null,
-                duration, DurationUnit.DAY, start, end));
+                duration, DurationUnit.DAY, start, end, null, false));
     }
 
     private ResourceView personnel(String code, String name, String profession, BigDecimal price, CalculationBasis basis) {
@@ -182,7 +197,7 @@ public class DemoDataInitializer implements ApplicationRunner {
         addCost(resource.id(), CostCategory.FUEL, "Fuel unit price", fuelPrice, CalculationBasis.PER_UNIT, UnitOfMeasure.LITER);
         addCost(resource.id(), CostCategory.MAINTENANCE, "Planned maintenance", price.multiply(new BigDecimal("0.08")), basis, basis == CalculationBasis.PER_HOUR ? UnitOfMeasure.HOUR : UnitOfMeasure.DAY);
         addCost(resource.id(), CostCategory.INSURANCE, "Equipment insurance", price.multiply(new BigDecimal("0.03")), basis, basis == CalculationBasis.PER_HOUR ? UnitOfMeasure.HOUR : UnitOfMeasure.DAY);
-        resources.addFuel(resource.id(), new FuelRequest(fuelType, consumption, UnitOfMeasure.LITER));
+        resources.addFuel(resource.id(), new FuelRequest(fuelType, consumption, BigDecimal.ZERO, UnitOfMeasure.LITER));
         return resources.get(resource.id());
     }
 
@@ -193,7 +208,7 @@ public class DemoDataInitializer implements ApplicationRunner {
     }
 
     private void addCost(UUID resourceId, CostCategory category, String name, BigDecimal price, CalculationBasis basis, UnitOfMeasure unit) {
-        resources.addCost(resourceId, new CostRequest(category, name, basis, price, unit, false, BigDecimal.ZERO, null, null));
+        resources.addCost(resourceId, new CostRequest(category, name, basis, price, unit, false, BigDecimal.ZERO, null, null, "USD"));
     }
 
     private AssignmentView assign(UUID projectId, UUID estimateId, ActivityView activity, UUID resourceId, BigDecimal quantity, WorkUnit workUnit) {

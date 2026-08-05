@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, HostListener, computed, input, output, signal } from '@angular/core';
-import { ActivityResource, GanttTask, ResourceSelection } from './gantt.models';
+import { ActivityResource, AssignmentDraft, GanttTask, ResourceSelection } from './gantt.models';
 
 type ResizeEdge = 'start' | 'end';
 type ZoomMode = 'month' | 'week' | 'day';
@@ -37,6 +37,7 @@ export class GanttComponent {
   protected readonly search = signal('');
   protected readonly resourceDialogTask = signal<GanttTask | null>(null);
   protected readonly selectedResourceIds = signal<Set<string>>(new Set());
+  protected readonly assignmentDrafts = signal<Record<string, AssignmentDraft>>({});
   protected readonly filteredTasks = computed(() => {
     const term = this.search().trim().toLowerCase();
     return term ? this.tasks().filter(task => `${task.code} ${task.name} ${task.wbs}`.toLowerCase().includes(term)) : this.tasks();
@@ -69,16 +70,16 @@ export class GanttComponent {
   protected barLeft(task: GanttTask): number { return this.daysBetween(this.rangeStart(), new Date(`${this.displayTask(task).start}T00:00:00`)) * this.dayWidth(); }
   protected barWidth(task: GanttTask): number { const value = this.displayTask(task); return (this.daysBetween(new Date(`${value.start}T00:00:00`), new Date(`${value.end}T00:00:00`)) + 1) * this.dayWidth(); }
   protected isToday(date: Date): boolean { const now = new Date(); return date.toDateString() === now.toDateString(); }
-  protected resourcesByType(type: ActivityResource['type']): ActivityResource[] { return this.resources().filter(resource => resource.type === type); }
+  protected resourcesByType(type: ActivityResource['type']): ActivityResource[] { const task = this.resourceDialogTask(); return this.resources().filter(resource => resource.type === type && (resource.assignable !== false || task?.assignments.some(assignment => assignment.resourceId === resource.id))); }
   protected resourcesForTask(task: GanttTask): ActivityResource[] { return task.assignments.map(assignment => this.resources().find(resource => resource.id === assignment.resourceId)).filter((resource): resource is ActivityResource => !!resource); }
   protected rateSummary(resource: ActivityResource): string {
     const cost = resource.costs.find(item => item.category !== 'FUEL');
-    return cost ? `${this.money(cost.unitPrice)} / ${cost.calculationBasis.replace('PER_', '').toLowerCase()}` : 'No rate entered';
+    return cost ? `${this.money(cost.unitPrice, cost.currencyCode)} / ${cost.calculationBasis.replace('PER_', '').toLowerCase()}` : 'No rate entered';
   }
   protected fuelSummary(resource: ActivityResource): string {
     const fuel = resource.fuelConsumptions[0]; const price = resource.costs.find(item => item.category === 'FUEL');
     if (!fuel) return '';
-    return `${fuel.fuelType.replace('_', ' ').toLowerCase()} · ${fuel.consumptionPerHour} ${fuel.consumptionUnit.toLowerCase()}/h${price ? ` · ${this.money(price.unitPrice)}/${price.unit?.toLowerCase()}` : ''}`;
+    return `${fuel.fuelType.replace('_', ' ').toLowerCase()} · ${this.t('work', 'çalışma')} ${fuel.consumptionPerHour}/h · ${this.t('standby', 'bekleme')} ${fuel.standbyConsumptionPerHour ?? 0}/h${price ? ` · ${this.money(price.unitPrice, price.currencyCode)}/${price.unit?.toLowerCase()}` : ''}`;
   }
   protected estimatedCost(task: GanttTask, resource: ActivityResource): string {
     const days = this.daysBetween(new Date(`${task.start}T00:00:00`), new Date(`${task.end}T00:00:00`)) + 1;
@@ -86,17 +87,43 @@ export class GanttComponent {
     const base = resource.costs.find(item => item.category !== 'FUEL');
     let total = base ? base.unitPrice * this.costFactor(base.calculationBasis, days, assignment.quantity) : 0;
     const fuel = resource.fuelConsumptions[0]; const fuelPrice = resource.costs.find(item => item.category === 'FUEL');
-    if (fuel && fuelPrice) total += fuel.consumptionPerHour * fuelPrice.unitPrice * days * 8 * assignment.quantity;
-    return total ? `Est. ${this.money(total)}` : '';
+    if (resource.type === 'material' && base) total = base.unitPrice * (assignment.requiredQuantity ?? 0) * (1 + (assignment.wastePercentage ?? 0) / 100);
+    if (fuel && fuelPrice) total += fuelPrice.unitPrice * days * assignment.quantity * (fuel.consumptionPerHour * (assignment.operatingHoursPerDay ?? 0) * assignment.utilizationRate / 100 + (fuel.standbyConsumptionPerHour ?? 0) * (assignment.standbyHoursPerDay ?? 0));
+    return total ? `Est. ${this.money(total, base?.currencyCode ?? fuelPrice?.currencyCode ?? this.currency())}` : '';
   }
-  protected openResourceDialog(event: MouseEvent, task: GanttTask): void { event.preventDefault(); if (this.readonly()) return; this.selectedResourceIds.set(new Set(task.assignments.map(assignment => assignment.resourceId))); this.resourceDialogTask.set(task); }
-  protected toggleResource(id: string): void { this.selectedResourceIds.update(current => { const next = new Set(current); next.has(id) ? next.delete(id) : next.add(id); return next; }); }
+  protected openResourceDialog(event: MouseEvent, task: GanttTask): void {
+    event.preventDefault(); if (this.readonly()) return;
+    this.selectedResourceIds.set(new Set(task.assignments.map(assignment => assignment.resourceId)));
+    this.assignmentDrafts.set(Object.fromEntries(task.assignments.map(assignment => [assignment.resourceId, {
+      id: assignment.id, resourceId: assignment.resourceId, quantity: assignment.quantity ?? 1, plannedWork: assignment.plannedWork ?? 0,
+      workUnit: assignment.workUnit, utilizationRate: assignment.utilizationRate ?? 100, startDate: assignment.startDate ?? task.start,
+      endDate: assignment.endDate ?? task.end, overtimeAllowed: assignment.overtimeAllowed ?? false,
+      personnelAssignmentType: assignment.personnelAssignmentType ?? 'DIRECT_LABOR', operatingHoursPerDay: assignment.operatingHoursPerDay ?? 8,
+      standbyHoursPerDay: assignment.standbyHoursPerDay ?? 0, requiredQuantity: assignment.requiredQuantity ?? 1, wastePercentage: assignment.wastePercentage ?? 0,
+    }])));
+    this.resourceDialogTask.set(task);
+  }
+  protected toggleResource(resource: ActivityResource): void {
+    this.selectedResourceIds.update(current => { const next = new Set(current); next.has(resource.id) ? next.delete(resource.id) : next.add(resource.id); return next; });
+    if (!this.assignmentDrafts()[resource.id]) this.assignmentDrafts.update(values => ({ ...values, [resource.id]: this.defaultAssignment(resource) }));
+  }
+  protected assignmentDraft(resource: ActivityResource): AssignmentDraft { return this.assignmentDrafts()[resource.id] ?? this.defaultAssignment(resource); }
+  protected updateAssignment(resource: ActivityResource, field: keyof AssignmentDraft, value: string | number | boolean | null): void {
+    this.assignmentDrafts.update(values => ({ ...values, [resource.id]: { ...(values[resource.id] ?? this.defaultAssignment(resource)), [field]: value } }));
+  }
   protected addResources(): void {
     const task = this.resourceDialogTask(); if (!task) return;
-    const currentIds = new Set(task.assignments.map(assignment => assignment.resourceId));
-    const addResourceIds = [...this.selectedResourceIds()].filter(id => !currentIds.has(id));
     const removeAssignmentIds = task.assignments.filter(assignment => !this.selectedResourceIds().has(assignment.resourceId)).map(assignment => assignment.id);
-    this.resourcesAdd.emit({ task, addResourceIds, removeAssignmentIds }); this.resourceDialogTask.set(null);
+    const assignments = this.resources().filter(resource => this.selectedResourceIds().has(resource.id)).map(resource => this.assignmentDraft(resource));
+    this.resourcesAdd.emit({ task, assignments, removeAssignmentIds }); this.resourceDialogTask.set(null);
+  }
+  private defaultAssignment(resource: ActivityResource): AssignmentDraft {
+    const task = this.resourceDialogTask(); const days = task ? this.daysBetween(new Date(`${task.start}T00:00:00`), new Date(`${task.end}T00:00:00`)) + 1 : 1;
+    return { id: null, resourceId: resource.id, quantity: 1, plannedWork: resource.type === 'material' ? 0 : days * 8,
+      workUnit: resource.type === 'personnel' ? 'PERSON_HOUR' : resource.type === 'equipment' ? 'EQUIPMENT_HOUR' : null,
+      utilizationRate: 100, startDate: task?.start ?? '', endDate: task?.end ?? '', overtimeAllowed: false,
+      personnelAssignmentType: resource.type === 'personnel' ? 'DIRECT_LABOR' : null, operatingHoursPerDay: 8, standbyHoursPerDay: 0,
+      requiredQuantity: 1, wastePercentage: resource.type === 'material' ? resource.materialProcurement?.defaultWastePercentage ?? 0 : 0 };
   }
 
   protected beginResize(event: PointerEvent, task: GanttTask, edge: ResizeEdge): void {
@@ -161,6 +188,6 @@ export class GanttComponent {
   private startOfWeek(date: Date): Date { return this.addDays(date, -((date.getDay() + 6) % 7)); }
   private daysBetween(start: Date, end: Date): number { return Math.round((Date.UTC(end.getFullYear(), end.getMonth(), end.getDate()) - Date.UTC(start.getFullYear(), start.getMonth(), start.getDate())) / DAY_MS); }
   private iso(date: Date): string { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; }
-  private money(value: number): string { return new Intl.NumberFormat(this.language() === 'tr' ? 'tr-TR' : 'en-US', { style: 'currency', currency: this.currency(), maximumFractionDigits: 2 }).format(value); }
+  private money(value: number, currency = this.currency()): string { return new Intl.NumberFormat(this.language() === 'tr' ? 'tr-TR' : 'en-US', { style: 'currency', currency, maximumFractionDigits: 2 }).format(value); }
   private costFactor(basis: string, days: number, quantity: number): number { if (basis === 'PER_HOUR') return days * 8 * quantity; if (basis === 'PER_WEEK') return days / 7 * quantity; if (basis === 'PER_MONTH') return days / 30 * quantity; if (basis === 'FIXED') return 1; if (basis === 'PER_UNIT') return quantity; return days * quantity; }
 }

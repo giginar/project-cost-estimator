@@ -40,21 +40,25 @@ class ProjectApiTests {
         String materialId = id(postJson("/api/v1/resources/materials", """
                 {"code":"MAT-01","name":"Geotextile","materialType":"GEOSYNTHETIC","defaultUnit":"SQUARE_METER"}
                 """));
+        String equipmentRateId = id(postJson("/api/v1/resources/" + equipmentId + "/cost-components", """
+                {"category":"RENTAL","name":"Daily rental","calculationBasis":"PER_DAY","unitPrice":1000,"unit":"DAY","currencyCode":"TRY"}
+                """));
         postJson("/api/v1/resources/" + equipmentId + "/cost-components", """
-                {"category":"RENTAL","name":"Daily rental","calculationBasis":"PER_DAY","unitPrice":1000,"unit":"DAY"}
-                """);
-        postJson("/api/v1/resources/" + equipmentId + "/cost-components", """
-                {"category":"FUEL","name":"Diesel price","calculationBasis":"PER_UNIT","unitPrice":10,"unit":"LITER"}
+                {"category":"FUEL","name":"Diesel price","calculationBasis":"PER_UNIT","unitPrice":10,"unit":"LITER","currencyCode":"TRY"}
                 """);
         postJson("/api/v1/resources/" + equipmentId + "/fuel-consumptions", """
-                {"fuelType":"DIESEL","consumptionPerHour":2,"consumptionUnit":"LITER"}
+                {"fuelType":"DIESEL","consumptionPerHour":2,"standbyConsumptionPerHour":1,"consumptionUnit":"LITER"}
                 """);
         postJson("/api/v1/resources/" + operatorId + "/cost-components", """
-                {"category":"SALARY","name":"Hourly wage","calculationBasis":"PER_HOUR","unitPrice":25,"unit":"HOUR"}
+                {"category":"SALARY","name":"Hourly wage","calculationBasis":"PER_HOUR","unitPrice":25,"unit":"HOUR","currencyCode":"TRY"}
                 """);
         String projectId = mapper.readTree(postJson("/api/v1/projects", """
                 {"code":"MAR-01","name":"Marine excavation","plannedStartDate":"2026-08-01","plannedEndDate":"2026-08-10","currencyCode":"TRY"}
                 """)).path("project").path("id").asText();
+        mvc.perform(put("/api/v1/projects/{project}/calendar", projectId).contentType(MediaType.APPLICATION_JSON).content("""
+                {"name":"Seven-day test calendar","workingDaysPerWeek":7,"workingHoursPerDay":8,"shifts":[{"name":"Day","startTime":"08:00:00","endTime":"16:00:00","paidHours":8}]}
+                """))
+                .andExpect(status().isOk());
         String estimateId = id(postJson("/api/v1/projects/" + projectId + "/estimates", "{\"name\":\"Estimate v1\"}"));
         String wbsId = id(postJson("/api/v1/projects/" + projectId + "/estimates/" + estimateId + "/wbs-items", "{\"code\":\"1\",\"name\":\"Dredging\"}"));
         String activityId = id(postJson("/api/v1/projects/" + projectId + "/estimates/" + estimateId + "/wbs-items/" + wbsId + "/activities", """
@@ -85,6 +89,38 @@ class ProjectApiTests {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.equipmentCost").value(4000))
                 .andExpect(jsonPath("$.personnelCost").value(800)).andExpect(jsonPath("$.fuelCost").value(640))
                 .andExpect(jsonPath("$.totalCost").value(5440));
+        mvc.perform(get("/api/v1/projects/{p}/estimates/{e}/cost-report", projectId, estimateId))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.total.totalCost").value(5440))
+                .andExpect(jsonPath("$.projectLevel.totalCost").value(0))
+                .andExpect(jsonPath("$.wbsItems[0].code").value("1"))
+                .andExpect(jsonPath("$.wbsItems[0].costs.totalCost").value(5440))
+                .andExpect(jsonPath("$.wbsItems[0].activities[0].code").value("A-1"))
+                .andExpect(jsonPath("$.wbsItems[0].activities[0].costs.fuelCost").value(640));
+        mvc.perform(get("/api/v1/projects/{p}/estimates/{e}/resource-rates", projectId, estimateId))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[?(@.sourceCostComponentId == '%s')]", equipmentRateId).exists());
+        mvc.perform(put("/api/v1/projects/{p}/estimates/{e}/activities/{a}/assignments/{assignment}", projectId, estimateId, activityId, assignmentId)
+                        .contentType(MediaType.APPLICATION_JSON).content("""
+                        {"resourceId":"%s","quantity":1,"plannedWork":32,"workUnit":"EQUIPMENT_HOUR","utilizationRate":50,"operatingHoursPerDay":4,"standbyHoursPerDay":4}
+                        """.formatted(equipmentId)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.operatingHoursPerDay").value(4))
+                .andExpect(jsonPath("$.standbyHoursPerDay").value(4));
+        mvc.perform(get("/api/v1/projects/{p}/estimates/{e}/cost", projectId, estimateId))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.fuelCost").value(320))
+                .andExpect(jsonPath("$.personnelCost").value(400)).andExpect(jsonPath("$.totalCost").value(4720));
+        mvc.perform(put("/api/v1/projects/{p}/estimates/{e}/activities/{a}/assignments/{assignment}", projectId, estimateId, activityId, assignmentId)
+                        .contentType(MediaType.APPLICATION_JSON).content("""
+                        {"resourceId":"%s","quantity":1,"plannedWork":32,"workUnit":"EQUIPMENT_HOUR","utilizationRate":100,"operatingHoursPerDay":8,"standbyHoursPerDay":0}
+                        """.formatted(equipmentId)))
+                .andExpect(status().isOk());
+        mvc.perform(put("/api/v1/projects/{p}/estimates/{e}/resource-rates/{rate}", projectId, estimateId, equipmentRateId)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"unitPrice\":1100}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.unitPrice").value(1100));
+        mvc.perform(get("/api/v1/projects/{p}/estimates/{e}/cost", projectId, estimateId))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.equipmentCost").value(4400))
+                .andExpect(jsonPath("$.totalCost").value(5840));
+        mvc.perform(put("/api/v1/projects/{p}/estimates/{e}/resource-rates/{rate}", projectId, estimateId, equipmentRateId)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"unitPrice\":1000}"))
+                .andExpect(status().isOk());
         mvc.perform(put("/api/v1/projects/{p}", projectId).contentType(MediaType.APPLICATION_JSON).content("""
                 {"code":"MAR-01","name":"Marine excavation","plannedStartDate":"2026-08-01","plannedEndDate":"2026-08-10","currencyCode":"TRY","languageCode":"tr","status":"ACTIVE","usdTryRate":35,"eurTryRate":38}
                 """))
@@ -99,7 +135,8 @@ class ProjectApiTests {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.project.currency").value("EUR"))
                 .andExpect(jsonPath("$.project.usdTryRate").value(35)).andExpect(jsonPath("$.project.eurTryRate").value(38));
         mvc.perform(get("/api/v1/resources/{id}", equipmentId)).andExpect(status().isOk())
-                .andExpect(jsonPath("$.costs[0].unitPrice").value(26.3158));
+                .andExpect(jsonPath("$.costs[0].unitPrice").value(1000))
+                .andExpect(jsonPath("$.costs[0].currencyCode").value("TRY"));
         mvc.perform(get("/api/v1/projects/{p}/estimates/{e}/cost", projectId, estimateId))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.equipmentCost").value(105.2632))
                 .andExpect(jsonPath("$.personnelCost").value(21.0528)).andExpect(jsonPath("$.fuelCost").value(16.8448))
