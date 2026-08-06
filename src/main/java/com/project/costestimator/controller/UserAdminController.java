@@ -1,10 +1,12 @@
 package com.project.costestimator.controller;
 
-import com.project.costestimator.dto.AuthModels.*;
-import com.project.costestimator.service.AuthService;
-import com.project.costestimator.service.VerificationMailService;
+import com.project.costestimator.application.port.in.MailOutboxQuery;
+import com.project.costestimator.application.port.in.UserAdministrationUseCase;
+import com.project.costestimator.dto.AuthModels.AdminCreateUserRequest;
+import com.project.costestimator.dto.AuthModels.MailOutboxView;
+import com.project.costestimator.dto.AuthModels.UserList;
+import com.project.costestimator.dto.AuthModels.UserView;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -12,12 +14,28 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/admin/users")
-@RequiredArgsConstructor
 public class UserAdminController {
-    private final AuthService auth;
-    private final VerificationMailService mail;
+    private final UserAdministrationUseCase users;
+    private final MailOutboxQuery mailOutbox;
 
-    @GetMapping public UserList list() { return auth.listUsers(); }
-    @PostMapping @ResponseStatus(HttpStatus.CREATED) public UserView create(@Valid @RequestBody AdminCreateUserRequest request) { return auth.createUser(request); }
-    @GetMapping("/mail-outbox") public List<MailOutboxView> mailOutbox() { return mail.developmentOutbox(); }
+    public UserAdminController(UserAdministrationUseCase users, MailOutboxQuery mailOutbox) {
+        this.users = users;
+        this.mailOutbox = mailOutbox;
+    }
+
+    @GetMapping
+    public UserList list() {
+        return users.listUsers();
+    }
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public UserView create(@Valid @RequestBody AdminCreateUserRequest request) {
+        return users.createUser(request);
+    }
+
+    @GetMapping("/mail-outbox")
+    public List<MailOutboxView> mailOutbox() {
+        return mailOutbox.developmentOutbox();
+    }
 }

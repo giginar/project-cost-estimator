@@ -1,5 +1,8 @@
 # Cost Estimator REST API
 
+Backend dependency boundaries and the behavior-preserving refactor are documented in
+[`docs/backend-hexagonal-architecture.md`](docs/backend-hexagonal-architecture.md).
+
 Base path: `/api/v1`
 
 ## Authentication and roles
@@ -106,7 +109,8 @@ Only the owner project can delete a project-created resource. Deletion is reject
 
 Pricing rules are ordered percentage calculations over either authoritative estimated cost or the running total. The pricing summary returns BOQ value, on-cost/risk adders, sales price, gross/net profit, profit margin and BOQ variance. The Angular **Pricing & profit** page edits these rules; Overview consumes the same backend summary.
 
-Data is currently kept in memory. The repository package is deliberately isolated so it can be replaced by JPA persistence without changing controllers.
+Data is currently kept in memory. Repository classes are outbound adapters behind `ProjectRepositoryPort`,
+`ResourceRepositoryPort`, and `UserRepositoryPort`; a JPA adapter can replace them without changing application services or controllers.
 
 ## Angular client
 

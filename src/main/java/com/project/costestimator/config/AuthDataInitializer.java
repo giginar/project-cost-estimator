@@ -1,7 +1,7 @@
 package com.project.costestimator.config;
 
+import com.project.costestimator.application.port.in.UserAdministrationUseCase;
 import com.project.costestimator.domain.enums.UserRole;
-import com.project.costestimator.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class AuthDataInitializer implements ApplicationRunner {
-    private final AuthService auth;
+    private final UserAdministrationUseCase auth;
 
     @Override
     public void run(ApplicationArguments args) {
