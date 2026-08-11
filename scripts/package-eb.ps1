@@ -33,7 +33,11 @@ try {
     $outputDirectory = Split-Path -Parent $resolvedOutput
     New-Item -ItemType Directory -Force -Path $outputDirectory | Out-Null
     if (Test-Path -LiteralPath $resolvedOutput) { Remove-Item -LiteralPath $resolvedOutput -Force }
-    Compress-Archive -Path (Join-Path $stage "*") -DestinationPath $resolvedOutput -CompressionLevel Optimal
+    # PowerShell Compress-Archive writes Windows backslashes into ZIP entry
+    # names. Elastic Beanstalk extracts bundles on Linux and rejects those
+    # entries, so use the JDK archiver which always emits portable '/' paths.
+    & jar --create --file $resolvedOutput --no-manifest -C $stage .
+    if ($LASTEXITCODE -ne 0) { throw "Could not create the deployment ZIP with the JDK jar tool." }
     Write-Host "Elastic Beanstalk bundle created: $resolvedOutput"
 }
 finally {
