@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
-import { catchError, finalize, forkJoin, map, of, retry, switchMap } from 'rxjs';
+import { catchError, finalize, forkJoin, map, of, retry, switchMap, tap } from 'rxjs';
 import { GanttComponent } from './features/gantt/gantt.component';
 import { ActivityResource, GanttTask, NewResource, ResourceSelection, ResourceType } from './features/gantt/gantt.models';
 import { ResourceCatalogComponent } from './features/resources/resource-catalog.component';
@@ -50,16 +50,9 @@ export class App implements OnInit {
   protected readonly settingsSaving = signal(false);
   protected readonly settingsMessage = signal('');
   protected readonly settings = computed<ProjectSettings>(() => ({ code: this.projectCode(), name: this.projectName(), description: this.projectDescription(), start: this.projectStart(), end: this.projectEnd(), currencyCode: this.currencyCode() as 'USD' | 'TRY' | 'EUR', usdTryRate: this.usdTryRate(), eurTryRate: this.eurTryRate(), status: this.projectStatus() }));
-  protected readonly tasks = signal<GanttTask[]>([
-    { id: '1', code: '1.1', name: 'Site mobilization', wbs: 'PREPARATION', start: '2026-08-03', end: '2026-08-08', assignments: [] },
-    { id: '2', code: '1.2', name: 'Bathymetric survey', wbs: 'PREPARATION', start: '2026-08-06', end: '2026-08-14', assignments: [] },
-    { id: '3', code: '2.1', name: 'Dredging area A', wbs: 'MARINE WORKS', start: '2026-08-12', end: '2026-08-28', assignments: [] },
-    { id: '4', code: '2.2', name: 'Dredging area B', wbs: 'MARINE WORKS', start: '2026-08-24', end: '2026-09-11', assignments: [] },
-    { id: '5', code: '2.3', name: 'Transport dredged material', wbs: 'MARINE WORKS', start: '2026-08-17', end: '2026-09-08', assignments: [] },
-    { id: '6', code: '3.1', name: 'Disposal area grading', wbs: 'LAND OPERATIONS', start: '2026-09-02', end: '2026-09-16', assignments: [] },
-    { id: '7', code: '4.1', name: 'Final hydrographic survey', wbs: 'CLOSEOUT', start: '2026-09-14', end: '2026-09-21', assignments: [] },
-    { id: '8', code: '4.2', name: 'Demobilization', wbs: 'CLOSEOUT', start: '2026-09-21', end: '2026-09-26', assignments: [] },
-  ]);
+  // Demo data must come from the backend. Keeping this empty prevents a
+  // hard-coded schedule from masking API/network failures.
+  protected readonly tasks = signal<GanttTask[]>([]);
   protected readonly resources = signal<ActivityResource[]>([]);
   protected readonly resourceActionMessage = signal('');
   protected readonly costReport = signal<EstimateCostReport | null>(null);
@@ -90,8 +83,16 @@ export class App implements OnInit {
   protected initials(): string { return this.auth.user()?.fullName.split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase() ?? ''; }
 
   private loadProjectData(projectId?: string): void {
-    this.api.listProjects().pipe(retry({ count: 15, delay: 1000 }), catchError(() => of([]))).subscribe(projects => this.projects.set(projects));
-    this.api.loadSchedule(projectId).pipe(retry({ count: 15, delay: 1000 }), catchError(() => of(null))).subscribe(schedule => { if (schedule) this.applySchedule(schedule); });
+    this.api.listProjects().pipe(
+      retry({ count: 15, delay: 1000 }),
+      tap(projects => this.projects.set(projects)),
+      switchMap(projects => {
+        const selectedId = projectId ?? projects.find(project => project.code === 'PORT-2027')?.id ?? projects[0]?.id;
+        return selectedId ? this.api.loadSchedule(selectedId) : of(null);
+      }),
+      retry({ count: 3, delay: 1000 }),
+      catchError(() => of(null)),
+    ).subscribe(schedule => { if (schedule) this.applySchedule(schedule); });
   }
 
   protected switchProject(projectId: string): void { if (projectId === this.scheduleContext?.projectId) { this.projectMenuOpen.set(false); return; } this.projectMenuOpen.set(false); this.tasks.set([]); this.wbsItems.set([]); this.resources.set([]); this.resourceActionMessage.set(''); this.costReport.set(null); this.projectRates.set([]); this.boqReport.set(null); this.workCalendar.set(null); this.pricingRules.set([]); this.pricingSummary.set(null); this.loadProjectData(projectId); }
@@ -113,8 +114,8 @@ export class App implements OnInit {
   }
 
   private applySchedule(schedule: ScheduleData): void { this.scheduleContext = schedule; this.projectCode.set(schedule.projectCode); this.projectName.set(schedule.projectName); this.projectDescription.set(schedule.projectDescription); this.projectStatus.set(schedule.projectStatus); this.projectStart.set(schedule.projectStart); this.projectEnd.set(schedule.projectEnd); this.currencyCode.set(schedule.currencyCode); this.usdTryRate.set(schedule.usdTryRate); this.eurTryRate.set(schedule.eurTryRate); this.language.set(schedule.languageCode); this.tasks.set(schedule.tasks); this.wbsItems.set(schedule.wbsItems); this.refreshResources(); this.refreshCostReport(); this.refreshResourceRates(); this.refreshPhaseOne(); this.refreshPricing(); }
-  private refreshCostReport(): void { if (!this.scheduleContext) { this.costReport.set(null); return; } this.api.loadCostReport(this.scheduleContext).pipe(catchError(() => of(null))).subscribe(report => { this.costReport.set(report); this.refreshPricingSummary(); }); }
-  private refreshResourceRates(): void { if (!this.scheduleContext) { this.projectRates.set([]); return; } this.api.listResourceRates(this.scheduleContext).pipe(catchError(() => of([]))).subscribe(rates => this.projectRates.set(rates)); }
+  private refreshCostReport(): void { if (!this.scheduleContext) { this.costReport.set(null); return; } this.api.loadCostReport(this.scheduleContext).pipe(retry({ count: 3, delay: 1000 }), catchError(() => of(null))).subscribe(report => { this.costReport.set(report); this.refreshPricingSummary(); }); }
+  private refreshResourceRates(): void { if (!this.scheduleContext) { this.projectRates.set([]); return; } this.api.listResourceRates(this.scheduleContext).pipe(retry({ count: 3, delay: 1000 }), catchError(() => of([]))).subscribe(rates => this.projectRates.set(rates)); }
   private refreshResources(): void {
     if (!this.scheduleContext) { this.resources.set([]); return; }
     this.api.listResources(this.scheduleContext.projectId).pipe(
@@ -122,12 +123,12 @@ export class App implements OnInit {
         const assignedIds = [...new Set(this.tasks().flatMap(task => task.assignments.map(assignment => assignment.resourceId)))];
         const missingIds = assignedIds.filter(id => !available.some(resource => resource.id === id));
         return missingIds.length ? forkJoin(missingIds.map(id => this.api.getResource(id, false).pipe(catchError(() => of(null))))).pipe(map(history => [...available, ...history.filter((resource): resource is ActivityResource => !!resource)])) : of(available);
-      }), catchError(() => of([])),
+      }), retry({ count: 3, delay: 1000 }), catchError(() => of([])),
     ).subscribe(resources => this.resources.set(resources));
   }
-  private refreshPhaseOne(): void { if (!this.scheduleContext) { this.boqReport.set(null); this.workCalendar.set(null); return; } this.api.listBoq(this.scheduleContext).pipe(catchError(() => of(null))).subscribe(report => this.boqReport.set(report)); this.api.getCalendar(this.scheduleContext).pipe(catchError(() => of(null))).subscribe(calendar => this.workCalendar.set(calendar)); }
-  private refreshPricing(): void { if (!this.scheduleContext) return; this.api.listPricingRules(this.scheduleContext).pipe(catchError(() => of([]))).subscribe(rules => this.pricingRules.set(rules)); this.refreshPricingSummary(); }
-  private refreshPricingSummary(): void { if (!this.scheduleContext) { this.pricingSummary.set(null); return; } this.api.loadPricingSummary(this.scheduleContext).pipe(catchError(() => of(null))).subscribe(summary => this.pricingSummary.set(summary)); }
+  private refreshPhaseOne(): void { if (!this.scheduleContext) { this.boqReport.set(null); this.workCalendar.set(null); return; } this.api.listBoq(this.scheduleContext).pipe(retry({ count: 3, delay: 1000 }), catchError(() => of(null))).subscribe(report => this.boqReport.set(report)); this.api.getCalendar(this.scheduleContext).pipe(retry({ count: 3, delay: 1000 }), catchError(() => of(null))).subscribe(calendar => this.workCalendar.set(calendar)); }
+  private refreshPricing(): void { if (!this.scheduleContext) return; this.api.listPricingRules(this.scheduleContext).pipe(retry({ count: 3, delay: 1000 }), catchError(() => of([]))).subscribe(rules => this.pricingRules.set(rules)); this.refreshPricingSummary(); }
+  private refreshPricingSummary(): void { if (!this.scheduleContext) { this.pricingSummary.set(null); return; } this.api.loadPricingSummary(this.scheduleContext).pipe(retry({ count: 3, delay: 1000 }), catchError(() => of(null))).subscribe(summary => this.pricingSummary.set(summary)); }
   private reloadSchedule(): void { if (!this.scheduleContext) return; this.api.loadSchedule(this.scheduleContext.projectId).subscribe(schedule => { if (schedule) this.applySchedule(schedule); }); }
 
   protected updateTask(updated: GanttTask): void {
