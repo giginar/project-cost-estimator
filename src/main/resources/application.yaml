@@ -15,7 +15,7 @@ spring:
 
 app:
   demo-data:
-    enabled: true
+    enabled: ${DEMO_DATA_ENABLED:true}
   security:
     enabled: true
   mail:
@@ -33,6 +33,14 @@ springdoc:
     path: /api-docs
 
 management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
   health:
     mail:
       enabled: ${MAIL_HEALTH_ENABLED:${MAIL_DELIVERY_ENABLED:false}}

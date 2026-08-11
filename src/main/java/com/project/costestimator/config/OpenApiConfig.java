@@ -25,6 +25,7 @@ public class OpenApiConfig {
                         .description("Resource planning, scheduling, and cost estimation API for construction projects.")
                         .contact(new Contact().name("Cost Estimator Team"))
                         .license(new License().name("Private use")))
-                .servers(List.of(new Server().url("http://localhost:8080").description("Local development")));
+                // A relative URL works locally and behind Amplify/CloudFront.
+                .servers(List.of(new Server().url("/").description("Current host")));
     }
 }

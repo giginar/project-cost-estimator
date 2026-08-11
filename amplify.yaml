@@ -7,6 +7,10 @@ applications:
       phases:
         preBuild:
           commands:
+            # Angular 21 requires a recent Node.js release. Pin it so Amplify
+            # image updates do not unexpectedly change the build runtime.
+            - nvm install 22
+            - nvm use 22
             - npm ci
 
         build:
@@ -14,10 +18,10 @@ applications:
             - npm run build
 
       artifacts:
-        baseDirectory: dist/project-cost-estimator/browser
+        baseDirectory: dist/frontend/browser
         files:
           - '**/*'
 
       cache:
         paths:
-          - node_modules/**/*
+          - ~/.npm/**/*

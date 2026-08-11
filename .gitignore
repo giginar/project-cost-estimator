@@ -28,6 +28,7 @@ target/
 build/
 frontend/node_modules/
 frontend/dist/
+dist/
 !**/src/main/**/build/
 !**/src/test/**/build/
 
