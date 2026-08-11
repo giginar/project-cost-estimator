@@ -1,27 +1,24 @@
 version: 1
 
-applications:
-  - appRoot: frontend
+frontend:
+  phases:
+    preBuild:
+      commands:
+        # Keep the build independent from Amplify image runtime changes.
+        - nvm install 22
+        - nvm use 22
+        - npm --prefix frontend ci
 
-    frontend:
-      phases:
-        preBuild:
-          commands:
-            # Angular 21 requires a recent Node.js release. Pin it so Amplify
-            # image updates do not unexpectedly change the build runtime.
-            - nvm install 22
-            - nvm use 22
-            - npm ci
+    build:
+      commands:
+        - npm --prefix frontend run build
 
-        build:
-          commands:
-            - npm run build
+  artifacts:
+    # Paths are relative to the repository root in this single-app build spec.
+    baseDirectory: frontend/dist/frontend/browser
+    files:
+      - '**/*'
 
-      artifacts:
-        baseDirectory: dist/frontend/browser
-        files:
-          - '**/*'
-
-      cache:
-        paths:
-          - ~/.npm/**/*
+  cache:
+    paths:
+      - ~/.npm/**/*

@@ -110,8 +110,9 @@ https://YOUR_DISTRIBUTION.cloudfront.net/actuator/health
 ## 4. Deploy Angular with Amplify Hosting
 
 1. Open **Amplify > Create new app > Host web app** and connect this repository.
-2. Amplify detects the root `amplify.yaml`. It builds only `frontend` and uses
-   Node 22.
+2. Treat it as a normal single application; do not select **My app is a
+   monorepo**. Amplify detects the root `amplify.yaml`, runs the frontend commands
+   from the repository root, and uses Node 22.
 3. Deploy the chosen branch.
 4. Open **Hosting > Rewrites and redirects > Manage redirects**.
 5. Copy the JSON from `deploy/amplify-rewrites.example.json`, replace
