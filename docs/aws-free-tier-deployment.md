@@ -4,10 +4,9 @@
 
 ```text
 Browser -> Amplify Hosting (Angular)
-            | /api/* 200 rewrite
+            | HTTPS API requests
             v
-          CloudFront (HTTPS, cache disabled)
-            | HTTP origin
+          API Gateway
             v
           Elastic Beanstalk single instance (Spring Boot, port 5000)
             v
@@ -15,10 +14,9 @@ Browser -> Amplify Hosting (Angular)
 ```
 
 Elastic Beanstalk itself has no additional service charge. The environment below
-uses one EC2 instance and deliberately has **no load balancer**. CloudFront gives
-the backend an HTTPS address, which Amplify requires for an external reverse
-proxy. Do not select a load-balanced Beanstalk environment: an Application Load
-Balancer is not suitable for this low-cost setup.
+uses one EC2 instance and deliberately has **no load balancer**. API Gateway gives
+the browser an HTTPS API endpoint and forwards requests to the backend. Do not
+select a load-balanced Beanstalk environment for this low-cost setup.
 
 > Important: projects, users and authentication tokens are currently stored in
 > Java memory. Any restart or replacement of the EC2 instance resets them. This
@@ -35,7 +33,7 @@ Balancer is not suitable for this low-cost setup.
 AWS accounts opened on or after 15 July 2025 use the newer credit-based Free
 Tier (free plan up to six months or until credits run out). Older accounts keep
 the legacy Free Tier rules. "Free Tier" therefore does not guarantee a permanent
-zero bill. EC2, its public IPv4 address, storage, CloudFront and Amplify usage
+zero bill. EC2, its public IPv4 address, storage, API Gateway and Amplify usage
 must all be watched in Billing.
 
 ## 1. Build the backend bundle
@@ -85,26 +83,18 @@ admin provisioning, secret management and email verification must be completed.
 For later backend releases, run the packaging script again and use
 **Elastic Beanstalk > Upload and deploy** with the new zip.
 
-## 3. Put CloudFront in front of the backend
+## 3. Put API Gateway in front of the backend
 
-Amplify reverse proxy targets must use HTTPS, while a single-instance Beanstalk
-environment exposes HTTP. Create one CloudFront distribution:
+Configure an API Gateway proxy integration that forwards the complete request
+path, query string, request body, HTTP method, and `Authorization` header to the
+Beanstalk environment. Enable CORS for the Amplify hostname and allow
+`authorization,content-type` plus all API methods used by the application.
 
-1. **Origin domain**: enter the Beanstalk hostname only (without `http://`).
-2. **Protocol to origin**: HTTP only; port 80.
-3. **Viewer protocol policy**: Redirect HTTP to HTTPS.
-4. **Allowed HTTP methods**: GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE.
-5. **Cache policy**: managed `CachingDisabled` (API/auth responses must not be
-   cached).
-6. **Origin request policy**: managed `AllViewerExceptHostHeader`. This forwards
-   query strings and the `Authorization` header while allowing the Beanstalk
-   origin host to be used.
-7. Do not enable WAF for this demo; it adds cost.
-
-After deployment, verify:
+The current production API URL is configured in
+`frontend/src/environments/environment.production.ts`. Verify it with:
 
 ```text
-https://YOUR_DISTRIBUTION.cloudfront.net/actuator/health
+https://YOUR_API_ID.execute-api.eu-west-1.amazonaws.com/api-docs
 ```
 
 ## 4. Deploy Angular with Amplify Hosting
@@ -115,12 +105,12 @@ https://YOUR_DISTRIBUTION.cloudfront.net/actuator/health
    from the repository root, and uses Node 22.
 3. Deploy the chosen branch.
 4. Open **Hosting > Rewrites and redirects > Manage redirects**.
-5. Copy the JSON from `deploy/amplify-rewrites.example.json`, replace
-   `REPLACE_WITH_CLOUDFRONT_DOMAIN` with the CloudFront domain, and save.
+5. Copy the JSON from `deploy/amplify-rewrites.example.json` and save it. This is
+   only the Angular SPA fallback; API requests go directly to API Gateway.
 
-Rule order matters: `/api/<*>` must be before the Angular SPA fallback. The API
-then remains same-origin from the browser's point of view, so no CORS change is
-needed and the existing frontend code continues to use `/api/v1/...`.
+The frontend services continue to use `/api/v1/...` internally. During a
+production build, the API URL interceptor replaces that prefix with the API
+Gateway URL. Local development keeps using the Angular proxy.
 
 Verify these flows from the Amplify URL:
 
@@ -134,8 +124,8 @@ Verify these flows from the Amplify URL:
 An Elastic Beanstalk single-instance environment is intended to be continuously
 available. Terminating the environment removes its instance; recreate and
 redeploy it later. Disabling/deleting only the Amplify app does not stop EC2.
-Delete unused CloudFront distributions after disabling them, and check for
-leftover Elastic IPs, EBS volumes and S3 application-version objects.
+Delete unused API Gateway APIs/stages, and check for leftover Elastic IPs, EBS
+volumes and S3 application-version objects.
 
 ## Production follow-up
 

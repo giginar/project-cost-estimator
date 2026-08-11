@@ -1,11 +1,5 @@
 [
   {
-    "source": "/api/<*>",
-    "target": "https://REPLACE_WITH_CLOUDFRONT_DOMAIN/api/<*>",
-    "status": "200",
-    "condition": null
-  },
-  {
     "source": "</^[^.]+$|\\.(?!(css|gif|ico|jpg|js|png|txt|svg|woff|woff2|ttf|map|json|webp)$)([^.]+$)/>",
     "target": "/index.html",
     "status": "200",
