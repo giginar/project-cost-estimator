@@ -111,7 +111,7 @@ https://YOUR_DISTRIBUTION.cloudfront.net/actuator/health
 
 1. Open **Amplify > Create new app > Host web app** and connect this repository.
 2. Treat it as a normal single application; do not select **My app is a
-   monorepo**. Amplify detects the root `amplify.yaml`, runs the frontend commands
+   monorepo**. Amplify detects the root `amplify.yml`, runs the frontend commands
    from the repository root, and uses Node 22.
 3. Deploy the chosen branch.
 4. Open **Hosting > Rewrites and redirects > Manage redirects**.
