@@ -45,6 +45,20 @@ Run the application with `.\mvnw.cmd spring-boot:run`, then open:
 - OpenAPI JSON: `http://localhost:8080/api-docs`
 
 Swagger UI's **Try it out** button can execute every endpoint directly from the browser.
+Use `POST /api/v1/auth/login` first, copy the returned `accessToken`, select
+**Authorize** in Swagger UI, and enter the token. Swagger adds the `Bearer` prefix.
+
+For the AWS deployment, the same documentation is available directly from the
+backend endpoints:
+
+- Elastic Beanstalk: `http://YOUR_EB_HOST/swagger-ui.html`
+- CloudFront: `https://YOUR_CLOUDFRONT_HOST/swagger-ui.html`
+- OpenAPI JSON: `https://YOUR_CLOUDFRONT_HOST/api-docs`
+
+The current Amplify proxy rule forwards only `/api/*`, so Swagger is not exposed
+on the Amplify frontend hostname by default. Use the CloudFront URL above. The
+Swagger UI and OpenAPI JSON endpoints are public documentation endpoints; actual
+business API operations still enforce their configured bearer-token roles.
 
 ## Resource catalog
 
