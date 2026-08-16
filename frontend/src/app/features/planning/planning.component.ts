@@ -1,12 +1,14 @@
 import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
-import { ActivityPlanningDraft, BoqDraft, BoqItem, CalendarSettings, DependencyDraft, WbsOption } from '../../core/project-api.service';
+import { ActivityPlanningDraft, BoqDraft, BoqImportResult, BoqItem, CalendarSettings, DependencyDraft, WbsOption } from '../../core/project-api.service';
 import { GanttTask } from '../gantt/gantt.models';
 
-@Component({ selector: 'app-planning', templateUrl: './planning.component.html', styleUrl: './planning.component.scss', changeDetection: ChangeDetectionStrategy.OnPush })
+@Component({ selector: 'app-planning', templateUrl: './planning.component.html', styleUrls: ['./planning.component.scss', './planning-import.component.scss'], changeDetection: ChangeDetectionStrategy.OnPush })
 export class PlanningComponent {
   readonly boqItems = input<BoqItem[]>([]); readonly totalBoqValue = input(0); readonly wbsItems = input<WbsOption[]>([]); readonly tasks = input<GanttTask[]>([]);
   readonly calendar = input<CalendarSettings | null>(null); readonly currency = input('USD'); readonly language = input<'en' | 'tr'>('en'); readonly readonly = input(false);
+  readonly importing = input(false); readonly importResult = input<BoqImportResult | null>(null);
   readonly boqSave = output<BoqDraft>(); readonly boqDelete = output<string>(); readonly planningSave = output<ActivityPlanningDraft>();
+  readonly boqImport = output<File>();
   readonly dependencyAdd = output<DependencyDraft>(); readonly dependencyDelete = output<{ activityId: string; dependencyId: string }>(); readonly calendarSave = output<CalendarSettings>();
   protected readonly boqDialogOpen = signal(false); protected readonly dependencyDialogOpen = signal(false);
   protected readonly boqDraft = signal<BoqDraft>({ id: null, code: '', description: '', unit: 'CUBIC_METER', quantity: 0, unitPrice: 0, currencyCode: 'USD', wbsId: '', activityId: null });
@@ -19,6 +21,7 @@ export class PlanningComponent {
   protected openBoq(item?: BoqItem): void { this.boqDraft.set(item ? { id: item.id, code: item.code, description: item.description, unit: item.unit, quantity: item.quantity, unitPrice: item.unitPrice, currencyCode: item.currencyCode, wbsId: item.wbsId, activityId: item.activityId } : { id: null, code: '', description: '', unit: 'CUBIC_METER', quantity: 0, unitPrice: 0, currencyCode: this.currency(), wbsId: this.wbsItems()[0]?.id ?? '', activityId: null }); this.boqDialogOpen.set(true); }
   protected updateBoq(field: keyof BoqDraft, value: string | number | null): void { this.boqDraft.update(draft => ({ ...draft, [field]: value })); }
   protected submitBoq(): void { const draft = this.boqDraft(); if (!draft.code.trim() || !draft.description.trim() || !draft.wbsId || draft.quantity < 0 || draft.unitPrice < 0) return; this.boqSave.emit({ ...draft, code: draft.code.trim(), description: draft.description.trim() }); this.boqDialogOpen.set(false); }
+  protected onImportFile(event: Event): void { const input = event.target as HTMLInputElement; const file = input.files?.[0]; if (file) this.boqImport.emit(file); input.value = ''; }
   protected activitiesForWbs(wbsId: string): GanttTask[] { const wbs = this.wbsItems().find(item => item.id === wbsId); return wbs ? this.tasks().filter(task => task.wbs === wbs.name.toUpperCase()) : []; }
   protected plan(task: GanttTask): ActivityPlanningDraft { return this.planDrafts()[task.id] ?? { activityId: task.id, plannedQuantity: task.plannedQuantity ?? 0, quantityUnit: task.quantityUnit ?? 'CUBIC_METER', dailyProductionRate: task.dailyProductionRate ?? 0, autoSchedule: task.autoSchedule ?? false, plannedStartDate: task.start }; }
   protected updatePlan(task: GanttTask, field: keyof ActivityPlanningDraft, value: string | number | boolean): void { this.planDrafts.update(values => ({ ...values, [task.id]: { ...this.plan(task), [field]: value } })); }

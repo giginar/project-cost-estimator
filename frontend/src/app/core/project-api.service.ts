@@ -22,10 +22,20 @@ export interface CostBreakdownView { personnelCost: number; equipmentCost: numbe
 export interface ActivityCostReport { activityId: string; code: string; name: string; costs: CostBreakdownView; }
 export interface WbsCostReport { wbsId: string; code: string; name: string; costs: CostBreakdownView; activities: ActivityCostReport[]; }
 export interface EstimateCostReport { total: CostBreakdownView; projectLevel: CostBreakdownView; wbsItems: WbsCostReport[]; }
+export type CostCodeType = 'PERSONNEL' | 'EQUIPMENT' | 'FUEL' | 'MATERIAL' | 'ACCOMMODATION' | 'TRANSPORTATION' | 'OVERHEAD' | 'TAX';
+export interface GeneralUnitPrice { id: string; code: string; name: string; fuelType: string; unit: string; unitPrice: number; currencyCode: string; active: boolean; }
+export interface GeneralUnitPriceDraft { id: string | null; code: string; name: string; fuelType: string; unit: string; unitPrice: number; active: boolean; }
+export interface CostCode { id: string; code: string; name: string; type: CostCodeType; active: boolean; }
+export interface CostCodeDraft { id: string | null; code: string; name: string; type: CostCodeType; active: boolean; }
+export interface CostCodeAmount { costCodeId: string; code: string; name: string; type: CostCodeType; amount: number; }
+export interface CashFlowMonth { month: string; income: number; expense: number; netCashFlow: number; cumulativeCashFlow: number; costsByCode: CostCodeAmount[]; }
+export interface CashFlowReport { totalIncome: number; totalExpense: number; netCashFlow: number; months: CashFlowMonth[]; }
 export interface EstimateResourceRate { id: string; resourceId: string; sourceCostComponentId: string; category: string; name: string; calculationBasis: string; unitPrice: number; unit: string | null; taxable: boolean; taxRate: number; validFrom: string | null; validTo: string | null; }
 export interface BoqItem { id: string; code: string; description: string; unit: string; quantity: number; unitPrice: number; currencyCode: string; totalPrice: number; wbsId: string; wbsCode: string; wbsName: string; activityId: string | null; activityCode: string | null; activityName: string | null; }
 export interface BoqDraft { id: string | null; code: string; description: string; unit: string; quantity: number; unitPrice: number; currencyCode: string; wbsId: string; activityId: string | null; }
 export interface BoqTraceabilityReport { totalBoqValue: number; itemCount: number; linkedItemCount: number; unlinkedItemCount: number; items: BoqItem[]; }
+export interface BoqImportIssue { rowNumber: number; message: string; }
+export interface BoqImportResult { preview: boolean; itemCount: number; createdWbsCount: number; issues: BoqImportIssue[]; }
 export interface ShiftSettings { id?: string; name: string; startTime: string; endTime: string; paidHours: number; }
 export interface CalendarSettings { id?: string; name: string; workingDaysPerWeek: number; workingHoursPerDay: number; shifts: ShiftSettings[]; }
 export interface ActivityPlanningDraft { activityId: string; plannedQuantity: number; quantityUnit: string; dailyProductionRate: number; autoSchedule: boolean; plannedStartDate: string; }
@@ -47,6 +57,23 @@ export class ProjectApiService {
     return this.http.get<EstimateCostReport>(`/api/v1/projects/${context.projectId}/estimates/${context.estimateId}/cost-report`);
   }
 
+  loadCashFlow(context: ScheduleData): Observable<CashFlowReport> {
+    return this.http.get<CashFlowReport>(`/api/v1/projects/${context.projectId}/estimates/${context.estimateId}/cash-flow`);
+  }
+
+  listGeneralUnitPrices(projectId: string): Observable<GeneralUnitPrice[]> { return this.http.get<GeneralUnitPrice[]>(`/api/v1/projects/${projectId}/settings/unit-prices`); }
+  saveGeneralUnitPrice(projectId: string, draft: GeneralUnitPriceDraft): Observable<GeneralUnitPrice> {
+    const url = `/api/v1/projects/${projectId}/settings/unit-prices${draft.id ? `/${draft.id}` : ''}`;
+    return draft.id ? this.http.put<GeneralUnitPrice>(url, draft) : this.http.post<GeneralUnitPrice>(url, draft);
+  }
+  deleteGeneralUnitPrice(projectId: string, id: string): Observable<void> { return this.http.delete<void>(`/api/v1/projects/${projectId}/settings/unit-prices/${id}`); }
+  listCostCodes(projectId: string): Observable<CostCode[]> { return this.http.get<CostCode[]>(`/api/v1/projects/${projectId}/settings/cost-codes`); }
+  saveCostCode(projectId: string, draft: CostCodeDraft): Observable<CostCode> {
+    const url = `/api/v1/projects/${projectId}/settings/cost-codes${draft.id ? `/${draft.id}` : ''}`;
+    return draft.id ? this.http.put<CostCode>(url, draft) : this.http.post<CostCode>(url, draft);
+  }
+  deleteCostCode(projectId: string, id: string): Observable<void> { return this.http.delete<void>(`/api/v1/projects/${projectId}/settings/cost-codes/${id}`); }
+
   listResourceRates(context: ScheduleData): Observable<EstimateResourceRate[]> {
     return this.http.get<EstimateResourceRate[]>(`/api/v1/projects/${context.projectId}/estimates/${context.estimateId}/resource-rates`);
   }
@@ -65,6 +92,10 @@ export class ProjectApiService {
     return draft.id ? this.http.put<BoqItem>(url, draft) : this.http.post<BoqItem>(url, draft);
   }
   deleteBoq(context: ScheduleData, id: string): Observable<void> { return this.http.delete<void>(`/api/v1/projects/${context.projectId}/estimates/${context.estimateId}/boq-items/${id}`); }
+  importBoq(context: ScheduleData, file: File, preview = false): Observable<BoqImportResult> {
+    const form = new FormData(); form.append('file', file);
+    return this.http.post<BoqImportResult>(`/api/v1/projects/${context.projectId}/estimates/${context.estimateId}/boq-import?preview=${preview}`, form);
+  }
   getCalendar(context: ScheduleData): Observable<CalendarSettings> { return this.http.get<CalendarSettings>(`/api/v1/projects/${context.projectId}/calendar`); }
   updateCalendar(context: ScheduleData, calendar: CalendarSettings): Observable<CalendarSettings> { return this.http.put<CalendarSettings>(`/api/v1/projects/${context.projectId}/calendar`, calendar); }
   updateActivityPlanning(context: ScheduleData, draft: ActivityPlanningDraft, wbsName: string): Observable<GanttTask> {

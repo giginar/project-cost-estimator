@@ -13,7 +13,7 @@ import { AuthComponent } from './features/auth/auth.component';
 import { UserAdminComponent } from './features/admin/user-admin.component';
 import { PlanningComponent } from './features/planning/planning.component';
 import { PricingComponent } from './features/pricing/pricing.component';
-import { ActivityPlanningDraft, BoqDraft, BoqTraceabilityReport, CalendarSettings, DependencyDraft, EquipmentEconomicsDraft, MaterialProcurementDraft, PricingRule, PricingRuleDraft, PricingSummary } from './core/project-api.service';
+import { ActivityPlanningDraft, BoqDraft, BoqImportResult, BoqTraceabilityReport, CalendarSettings, CashFlowReport, CostCode, CostCodeDraft, DependencyDraft, EquipmentEconomicsDraft, GeneralUnitPrice, GeneralUnitPriceDraft, MaterialProcurementDraft, PricingRule, PricingRuleDraft, PricingSummary } from './core/project-api.service';
 
 @Component({
   selector: 'app-root',
@@ -56,8 +56,14 @@ export class App implements OnInit {
   protected readonly resources = signal<ActivityResource[]>([]);
   protected readonly resourceActionMessage = signal('');
   protected readonly costReport = signal<EstimateCostReport | null>(null);
+  protected readonly cashFlow = signal<CashFlowReport | null>(null);
   protected readonly projectRates = signal<EstimateResourceRate[]>([]);
   protected readonly boqReport = signal<BoqTraceabilityReport | null>(null);
+  protected readonly boqImporting = signal(false);
+  protected readonly boqImportResult = signal<BoqImportResult | null>(null);
+  protected readonly generalUnitPrices = signal<GeneralUnitPrice[]>([]);
+  protected readonly costCodes = signal<CostCode[]>([]);
+  protected readonly configurationMessage = signal('');
   protected readonly workCalendar = signal<CalendarSettings | null>(null);
   protected readonly pricingRules = signal<PricingRule[]>([]);
   protected readonly pricingSummary = signal<PricingSummary | null>(null);
@@ -78,7 +84,7 @@ export class App implements OnInit {
     if (user.role !== 'ADMIN') this.loadProjectData();
   }
 
-  protected logout(): void { this.auth.logout(); this.scheduleContext = null; this.resources.set([]); this.costReport.set(null); this.projectRates.set([]); this.boqReport.set(null); this.workCalendar.set(null); this.pricingRules.set([]); this.pricingSummary.set(null); }
+  protected logout(): void { this.auth.logout(); this.scheduleContext = null; this.resources.set([]); this.costReport.set(null); this.cashFlow.set(null); this.projectRates.set([]); this.boqReport.set(null); this.generalUnitPrices.set([]); this.costCodes.set([]); this.workCalendar.set(null); this.pricingRules.set([]); this.pricingSummary.set(null); }
   protected isEngineer(): boolean { return this.auth.user()?.role === 'ENGINEER'; }
   protected initials(): string { return this.auth.user()?.fullName.split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase() ?? ''; }
 
@@ -95,7 +101,7 @@ export class App implements OnInit {
     ).subscribe(schedule => { if (schedule) this.applySchedule(schedule); });
   }
 
-  protected switchProject(projectId: string): void { if (projectId === this.scheduleContext?.projectId) { this.projectMenuOpen.set(false); return; } this.projectMenuOpen.set(false); this.tasks.set([]); this.wbsItems.set([]); this.resources.set([]); this.resourceActionMessage.set(''); this.costReport.set(null); this.projectRates.set([]); this.boqReport.set(null); this.workCalendar.set(null); this.pricingRules.set([]); this.pricingSummary.set(null); this.loadProjectData(projectId); }
+  protected switchProject(projectId: string): void { if (projectId === this.scheduleContext?.projectId) { this.projectMenuOpen.set(false); return; } this.projectMenuOpen.set(false); this.tasks.set([]); this.wbsItems.set([]); this.resources.set([]); this.resourceActionMessage.set(''); this.costReport.set(null); this.cashFlow.set(null); this.projectRates.set([]); this.boqReport.set(null); this.boqImportResult.set(null); this.generalUnitPrices.set([]); this.costCodes.set([]); this.workCalendar.set(null); this.pricingRules.set([]); this.pricingSummary.set(null); this.loadProjectData(projectId); }
   protected openNewProjectDialog(): void { const start = this.iso(new Date()); const end = new Date(); end.setMonth(end.getMonth() + 1); this.newProjectDraft.set({ code: '', name: '', description: '', start, end: this.iso(end), currencyCode: this.currencyCode() as NewProject['currencyCode'] }); this.projectActionError.set(''); this.projectMenuOpen.set(false); this.newProjectDialogOpen.set(true); }
   protected openWbsDialog(): void { this.newWbsDraft.set({ code: String(this.wbsItems().length + 1), name: '', description: '' }); this.projectActionError.set(''); this.projectMenuOpen.set(false); this.wbsDialogOpen.set(true); }
   protected updateNewProject(field: keyof NewProject, value: string): void { this.newProjectDraft.update(draft => ({ ...draft, [field]: value })); }
@@ -113,8 +119,10 @@ export class App implements OnInit {
     this.api.addWbs(this.scheduleContext, draft).pipe(finalize(() => this.wbsCreating.set(false))).subscribe({ next: wbs => { this.wbsItems.update(items => [...items, wbs]); this.scheduleContext!.wbsItems.push(wbs); this.wbsDialogOpen.set(false); }, error: error => this.projectActionError.set(error.error?.detail ?? 'WBS could not be added.') });
   }
 
-  private applySchedule(schedule: ScheduleData): void { this.scheduleContext = schedule; this.projectCode.set(schedule.projectCode); this.projectName.set(schedule.projectName); this.projectDescription.set(schedule.projectDescription); this.projectStatus.set(schedule.projectStatus); this.projectStart.set(schedule.projectStart); this.projectEnd.set(schedule.projectEnd); this.currencyCode.set(schedule.currencyCode); this.usdTryRate.set(schedule.usdTryRate); this.eurTryRate.set(schedule.eurTryRate); this.language.set(schedule.languageCode); this.tasks.set(schedule.tasks); this.wbsItems.set(schedule.wbsItems); this.refreshResources(); this.refreshCostReport(); this.refreshResourceRates(); this.refreshPhaseOne(); this.refreshPricing(); }
-  private refreshCostReport(): void { if (!this.scheduleContext) { this.costReport.set(null); return; } this.api.loadCostReport(this.scheduleContext).pipe(retry({ count: 3, delay: 1000 }), catchError(() => of(null))).subscribe(report => { this.costReport.set(report); this.refreshPricingSummary(); }); }
+  private applySchedule(schedule: ScheduleData): void { this.scheduleContext = schedule; this.projectCode.set(schedule.projectCode); this.projectName.set(schedule.projectName); this.projectDescription.set(schedule.projectDescription); this.projectStatus.set(schedule.projectStatus); this.projectStart.set(schedule.projectStart); this.projectEnd.set(schedule.projectEnd); this.currencyCode.set(schedule.currencyCode); this.usdTryRate.set(schedule.usdTryRate); this.eurTryRate.set(schedule.eurTryRate); this.language.set(schedule.languageCode); this.tasks.set(schedule.tasks); this.wbsItems.set(schedule.wbsItems); this.refreshResources(); this.refreshCostReport(); this.refreshResourceRates(); this.refreshPhaseOne(); this.refreshPricing(); this.refreshProjectConfiguration(); }
+  private refreshCostReport(): void { if (!this.scheduleContext) { this.costReport.set(null); this.cashFlow.set(null); return; } this.refreshCashFlow(); this.api.loadCostReport(this.scheduleContext).pipe(retry({ count: 3, delay: 1000 }), catchError(() => of(null))).subscribe(report => { this.costReport.set(report); this.refreshPricingSummary(); }); }
+  private refreshCashFlow(): void { if (!this.scheduleContext) { this.cashFlow.set(null); return; } this.api.loadCashFlow(this.scheduleContext).pipe(retry({ count: 3, delay: 1000 }), catchError(() => of(null))).subscribe(report => this.cashFlow.set(report)); }
+  private refreshProjectConfiguration(): void { if (!this.scheduleContext) return; forkJoin({ prices: this.api.listGeneralUnitPrices(this.scheduleContext.projectId), codes: this.api.listCostCodes(this.scheduleContext.projectId) }).pipe(catchError(() => of({ prices: [], codes: [] }))).subscribe(result => { this.generalUnitPrices.set(result.prices); this.costCodes.set(result.codes); }); }
   private refreshResourceRates(): void { if (!this.scheduleContext) { this.projectRates.set([]); return; } this.api.listResourceRates(this.scheduleContext).pipe(retry({ count: 3, delay: 1000 }), catchError(() => of([]))).subscribe(rates => this.projectRates.set(rates)); }
   private refreshResources(): void {
     if (!this.scheduleContext) { this.resources.set([]); return; }
@@ -166,11 +174,16 @@ export class App implements OnInit {
   protected deletePricingRule(id: string): void { if (!this.scheduleContext) return; this.api.deletePricingRule(this.scheduleContext, id).subscribe(() => this.refreshPricing()); }
   private replaceResource(updated: ActivityResource): void { this.resources.update(resources => resources.map(resource => resource.id === updated.id ? updated : resource)); }
   protected saveBoq(draft: BoqDraft): void { if (!this.scheduleContext) return; this.api.saveBoq(this.scheduleContext, draft).subscribe(() => this.reloadSchedule()); }
-  protected deleteBoq(id: string): void { if (!this.scheduleContext) return; this.api.deleteBoq(this.scheduleContext, id).subscribe(() => this.refreshPhaseOne()); }
+  protected deleteBoq(id: string): void { if (!this.scheduleContext) return; this.api.deleteBoq(this.scheduleContext, id).subscribe(() => { this.refreshPhaseOne(); this.refreshCashFlow(); }); }
+  protected importBoq(file: File): void { if (!this.scheduleContext) return; this.boqImporting.set(true); this.boqImportResult.set(null); this.api.importBoq(this.scheduleContext, file).pipe(finalize(() => this.boqImporting.set(false))).subscribe({ next: result => { this.boqImportResult.set(result); if (!result.issues.length) this.reloadSchedule(); }, error: error => this.boqImportResult.set({ preview: true, itemCount: 0, createdWbsCount: 0, issues: [{ rowNumber: 0, message: error.error?.detail ?? this.t('Spreadsheet could not be imported.', 'Excel dosyası içe aktarılamadı.') }] }) }); }
   protected saveActivityPlanning(draft: ActivityPlanningDraft): void { if (!this.scheduleContext) return; const task = this.tasks().find(value => value.id === draft.activityId); if (!task) return; this.api.updateActivityPlanning(this.scheduleContext, draft, task.wbs).subscribe(() => this.reloadSchedule()); }
   protected addDependency(draft: DependencyDraft): void { if (!this.scheduleContext) return; this.api.addDependency(this.scheduleContext, draft).subscribe(() => this.reloadSchedule()); }
   protected deleteDependency(event: { activityId: string; dependencyId: string }): void { if (!this.scheduleContext) return; this.api.deleteDependency(this.scheduleContext, event.activityId, event.dependencyId).subscribe(() => this.reloadSchedule()); }
   protected saveCalendar(calendar: CalendarSettings): void { if (!this.scheduleContext) return; this.api.updateCalendar(this.scheduleContext, calendar).subscribe(() => this.reloadSchedule()); }
+  protected saveGeneralUnitPrice(draft: GeneralUnitPriceDraft): void { if (!this.scheduleContext) return; this.configurationMessage.set(''); this.api.saveGeneralUnitPrice(this.scheduleContext.projectId, draft).subscribe({ next: () => { this.refreshProjectConfiguration(); this.refreshCostReport(); this.configurationMessage.set(this.t('General unit price saved.', 'Genel birim fiyatı kaydedildi.')); }, error: error => this.configurationMessage.set(error.error?.detail ?? this.t('General unit price could not be saved.', 'Genel birim fiyatı kaydedilemedi.')) }); }
+  protected deleteGeneralUnitPrice(id: string): void { if (!this.scheduleContext) return; this.api.deleteGeneralUnitPrice(this.scheduleContext.projectId, id).subscribe({ next: () => { this.refreshProjectConfiguration(); this.refreshCostReport(); }, error: error => this.configurationMessage.set(error.error?.detail ?? this.t('General unit price could not be deleted.', 'Genel birim fiyatı silinemedi.')) }); }
+  protected saveCostCode(draft: CostCodeDraft): void { if (!this.scheduleContext) return; this.configurationMessage.set(''); this.api.saveCostCode(this.scheduleContext.projectId, draft).subscribe({ next: () => { this.refreshProjectConfiguration(); this.refreshCashFlow(); this.configurationMessage.set(this.t('Cost code saved.', 'Maliyet kodu kaydedildi.')); }, error: error => this.configurationMessage.set(error.error?.detail ?? this.t('Cost code could not be saved.', 'Maliyet kodu kaydedilemedi.')) }); }
+  protected deleteCostCode(id: string): void { if (!this.scheduleContext) return; this.api.deleteCostCode(this.scheduleContext.projectId, id).subscribe({ next: () => { this.refreshProjectConfiguration(); this.refreshCashFlow(); }, error: error => this.configurationMessage.set(error.error?.detail ?? this.t('Cost code could not be deleted.', 'Maliyet kodu silinemedi.')) }); }
   protected saveSettings(event: { settings: ProjectSettings; language: 'en' | 'tr' }): void {
     if (!this.scheduleContext) { this.settingsMessage.set(event.language === 'tr' ? 'Proje verisi henüz yüklenmedi. Backend bağlantısını kontrol edip sayfayı yenileyin.' : 'Project data has not loaded yet. Check the backend connection and refresh.'); return; }
     this.settingsSaving.set(true); this.settingsMessage.set('');

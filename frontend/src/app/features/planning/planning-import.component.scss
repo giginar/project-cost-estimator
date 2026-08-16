@@ -1,0 +1,9 @@
+.planning-actions { display: flex !important; grid-auto-flow: column; gap: 8px; margin-left: auto; }
+.planning-actions button { margin-left: 0; }
+.import-button { display: flex; align-items: center; padding: 9px 13px; border: 1px solid #9bcfc9; border-radius: 6px; background: #edf8f6; color: #168f86; font-weight: 700; cursor: pointer; }
+.import-button input { display: none; }
+.import-button.disabled { cursor: wait; opacity: .6; }
+.import-result { display: grid; gap: 4px; margin: -4px 0 14px; padding: 12px 16px; border: 1px solid #bfe2dd; border-radius: 8px; background: #f1faf8; color: #267b71; font-size: 10px; }
+.import-result.error { border-color: #efc8c2; background: #fff4f2; color: #a34f44; }
+.import-result small { font-size: 9px; }
+@media (max-width: 760px) { .planning-bar { align-items: flex-start; flex-wrap: wrap; } .planning-actions { width: 100%; margin-left: 55px; } }

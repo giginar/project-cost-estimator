@@ -50,6 +50,23 @@
     </div>
   </section>
 
+  <section class="master-section">
+    <header><span>03</span><div><h2>{{ t('General unit prices', 'Genel birim fiyatları') }}</h2><p>{{ t('Shared fuel and energy prices used when equipment has no override.', 'Ekipmana özel fiyat girilmediğinde kullanılacak ortak yakıt ve enerji fiyatları.') }}</p></div></header>
+    <div class="master-list">
+      @for (price of generalUnitPrices(); track price.id) { <div class="master-row"><span><code>{{ price.code }}</code><strong>{{ price.name }}</strong><small>{{ price.fuelType }} · {{ price.unit }}</small></span><b>{{ price.unitPrice }} {{ price.currencyCode }}</b><em [class.inactive]="!price.active">{{ price.active ? t('Active', 'Aktif') : t('Inactive', 'Pasif') }}</em>@if (!readonly()) { <button type="button" (click)="editUnitPrice(price)">✎</button><button type="button" class="danger" (click)="unitPriceDelete.emit(price.id)">×</button> }</div> } @empty { <p class="master-empty">{{ t('No general unit price has been defined.', 'Henüz genel birim fiyatı tanımlanmadı.') }}</p> }
+    </div>
+    @if (!readonly()) { <div class="master-editor"><input placeholder="DIESEL" [value]="unitPriceDraft().code" (input)="updateUnitPrice('code', $any($event.target).value)" /><input [placeholder]="t('Price name', 'Fiyat adı')" [value]="unitPriceDraft().name" (input)="updateUnitPrice('name', $any($event.target).value)" /><select [value]="unitPriceDraft().fuelType" (change)="updateUnitPrice('fuelType', $any($event.target).value)">@for (type of fuelTypes; track type) { <option [value]="type">{{ type }}</option> }</select><input type="number" min="0" step="0.01" [value]="unitPriceDraft().unitPrice" (input)="updateUnitPrice('unitPrice', $any($event.target).valueAsNumber)" /><label><input type="checkbox" [checked]="unitPriceDraft().active" (change)="updateUnitPrice('active', $any($event.target).checked)" />{{ t('Active', 'Aktif') }}</label><button type="button" (click)="submitUnitPrice()">{{ unitPriceDraft().id ? t('Update', 'Güncelle') : t('Add', 'Ekle') }}</button></div> }
+  </section>
+
+  <section class="master-section">
+    <header><span>04</span><div><h2>{{ t('Cost codes', 'Maliyet kodları') }}</h2><p>{{ t('Codes used to group monthly expenses in cash-flow reports.', 'Aylık giderleri nakit akışı raporunda gruplayan kodlar.') }}</p></div></header>
+    <div class="master-list">
+      @for (code of costCodes(); track code.id) { <div class="master-row"><span><code>{{ code.code }}</code><strong>{{ code.name }}</strong><small>{{ code.type }}</small></span><em [class.inactive]="!code.active">{{ code.active ? t('Active', 'Aktif') : t('Inactive', 'Pasif') }}</em>@if (!readonly()) { <button type="button" (click)="editCostCode(code)">✎</button><button type="button" class="danger" (click)="costCodeDelete.emit(code.id)">×</button> }</div> }
+    </div>
+    @if (!readonly()) { <div class="master-editor cost-code-editor"><input placeholder="LAB" [value]="costCodeDraft().code" (input)="updateCostCode('code', $any($event.target).value)" /><input [placeholder]="t('Cost code name', 'Maliyet kodu adı')" [value]="costCodeDraft().name" (input)="updateCostCode('name', $any($event.target).value)" /><select [value]="costCodeDraft().type" (change)="updateCostCode('type', $any($event.target).value)">@for (type of costCodeTypes; track type) { <option [value]="type">{{ type }}</option> }</select><label><input type="checkbox" [checked]="costCodeDraft().active" (change)="updateCostCode('active', $any($event.target).checked)" />{{ t('Active', 'Aktif') }}</label><button type="button" (click)="submitCostCode()">{{ costCodeDraft().id ? t('Update', 'Güncelle') : t('Add', 'Ekle') }}</button></div> }
+  </section>
+
   @if (validationError()) { <p class="validation-message">{{ validationError() }}</p> }
   @if (message()) { <p class="save-message">{{ message() }}</p> }
+  @if (configurationMessage()) { <p class="save-message">{{ configurationMessage() }}</p> }
 </form>

@@ -1,0 +1,20 @@
+.master-section { grid-column: 1 / -1; }
+.master-list { display: grid; }
+.master-row { display: grid; grid-template-columns: minmax(220px, 1fr) 150px 70px 32px 32px; gap: 10px; align-items: center; min-height: 58px; padding: 8px 18px; border-bottom: 1px solid #edf1f3; color: #617582; font-size: 9px; }
+.master-row > span { display: grid; grid-template-columns: 70px 1fr; align-items: center; }
+.master-row code { grid-row: 1 / span 2; color: #168f86; font: 800 9px var(--font); }
+.master-row strong { color: #2b4152; font-size: 10px; }
+.master-row small { margin-top: 3px; color: #91a0aa; font-size: 8px; }
+.master-row b { color: #263d50; }
+.master-row em { color: #168f86; font-style: normal; }
+.master-row em.inactive { color: #9aa6ad; }
+.master-row button { border: 0; background: transparent; color: #607481; cursor: pointer; }
+.master-row button.danger { color: #ba5b50; font-size: 16px; }
+.master-empty { margin: 0; padding: 24px; color: #91a0aa; text-align: center; font-size: 9px; }
+.master-editor { display: grid; grid-template-columns: 120px minmax(190px, 1fr) 170px 130px 90px 90px; gap: 9px; align-items: center; padding: 14px 18px; background: #f8fafb; }
+.master-editor input:not([type='checkbox']), .master-editor select { box-sizing: border-box; width: 100%; height: 36px; padding: 0 9px; border: 1px solid #dce4e8; border-radius: 6px; background: white; color: #2b4152; font-size: 9px; }
+.master-editor label { display: flex; align-items: center; gap: 6px; color: #607481; font-size: 9px; }
+.master-editor button { height: 36px; border: 0; border-radius: 6px; background: #168f86; color: white; font-size: 9px; font-weight: 700; cursor: pointer; }
+.cost-code-editor { grid-template-columns: 120px minmax(220px, 1fr) 190px 90px 90px; }
+@media (max-width: 900px) { .master-editor, .cost-code-editor { grid-template-columns: 1fr 1fr; } .master-row { grid-template-columns: minmax(190px, 1fr) 120px 60px 30px 30px; } }
+@media (max-width: 620px) { .master-editor, .cost-code-editor { grid-template-columns: 1fr; } .master-row { grid-template-columns: 1fr auto auto; } .master-row > b, .master-row > em { grid-column: 1; } }
