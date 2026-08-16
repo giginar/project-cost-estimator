@@ -161,11 +161,53 @@ class ProjectApiTests {
         JsonNode detail = mapper.readTree(mvc.perform(get("/api/v1/projects/{id}", seededProject.path("id").asText()))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
         JsonNode wbsItems = detail.path("estimates").get(0).path("wbsItems");
+        String projectId = seededProject.path("id").asText();
+        String estimateId = detail.path("estimates").get(0).path("id").asText();
         int activityCount = wbsItems.valueStream().mapToInt(wbs -> wbs.path("activities").size()).sum();
 
         assertThat(seededProject.path("name").asText()).isEqualTo("Aegean Deepwater Port Expansion");
+        assertThat(seededProject.path("usdTryRate").decimalValue()).isEqualByComparingTo("42.75");
+        assertThat(seededProject.path("eurTryRate").decimalValue()).isEqualByComparingTo("49.60");
         assertThat(wbsItems.size()).isEqualTo(6);
         assertThat(activityCount).isEqualTo(15);
+
+        mvc.perform(get("/api/v1/projects/{id}/settings/unit-prices", projectId))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(4))
+                .andExpect(jsonPath("$[?(@.fuelType == 'DIESEL')].unitPrice").value(1.18))
+                .andExpect(jsonPath("$[?(@.fuelType == 'ELECTRICITY')].unitPrice").value(0.22));
+        mvc.perform(get("/api/v1/projects/{id}/settings/cost-codes", projectId))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(8));
+        mvc.perform(get("/api/v1/projects/{id}/calendar", projectId))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.workingHoursPerDay").value(16))
+                .andExpect(jsonPath("$.shifts.length()").value(2));
+        mvc.perform(get("/api/v1/projects/{id}/estimates/{estimate}/boq-traceability", projectId, estimateId))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.itemCount").value(6))
+                .andExpect(jsonPath("$.linkedItemCount").value(6));
+        mvc.perform(get("/api/v1/projects/{id}/estimates/{estimate}/pricing-rules", projectId, estimateId))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(7));
+
+        JsonNode cashFlow = mapper.readTree(mvc.perform(get(
+                        "/api/v1/projects/{id}/estimates/{estimate}/cash-flow", projectId, estimateId))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        assertThat(cashFlow.path("totalIncome").decimalValue()).isPositive();
+        assertThat(cashFlow.path("totalExpense").decimalValue()).isPositive();
+        assertThat(cashFlow.path("months").size()).isGreaterThan(1);
+
+        JsonNode catalog = mapper.readTree(mvc.perform(get("/api/v1/resources"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        JsonNode ownedEquipment = catalog.valueStream()
+                .filter(resource -> "EQ-005".equals(resource.path("code").asText()))
+                .findFirst().orElseThrow();
+        JsonNode procuredMaterial = catalog.valueStream()
+                .filter(resource -> "MAT-001".equals(resource.path("code").asText()))
+                .findFirst().orElseThrow();
+        JsonNode taxableTruck = catalog.valueStream()
+                .filter(resource -> "EQ-004".equals(resource.path("code").asText()))
+                .findFirst().orElseThrow();
+        assertThat(ownedEquipment.path("shared").asBoolean()).isFalse();
+        assertThat(ownedEquipment.path("equipmentEconomics").path("monthlyDepreciation").decimalValue()).isPositive();
+        assertThat(procuredMaterial.path("materialProcurement").path("supplier").asText()).isNotBlank();
+        assertThat(taxableTruck.path("costs").valueStream().anyMatch(cost -> cost.path("taxable").asBoolean())).isTrue();
     }
 
     @Test
