@@ -136,6 +136,12 @@ public class ApplicationServiceConfig {
     }
 
     @Bean
+    CashFlowQuery cashFlowQuery(ProjectFinder projects, CostCalculator calculator,
+                                CurrencyConverter currencies) {
+        return new CashFlowApplicationService(projects, calculator, currencies);
+    }
+
+    @Bean
     ProjectConfigurationUseCase projectConfigurationUseCase(ProjectRepositoryPort projects,
                                                              ProjectFinder finder) {
         return new ProjectConfigurationApplicationService(projects, finder);

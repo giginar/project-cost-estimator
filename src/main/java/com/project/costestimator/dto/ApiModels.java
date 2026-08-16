@@ -85,6 +85,13 @@ public final class ApiModels {
     public record CostCodeView(UUID id, String code, String name, CostCodeType type, boolean active) {}
 
 
+    public record CostCodeAmount(UUID costCodeId, String code, String name, CostCodeType type,
+                                 BigDecimal amount) {}
+    public record CashFlowMonth(String month, BigDecimal income, BigDecimal expense,
+                                BigDecimal netCashFlow, BigDecimal cumulativeCashFlow,
+                                List<CostCodeAmount> costsByCode) {}
+    public record CashFlowReport(BigDecimal totalIncome, BigDecimal totalExpense,
+                                 BigDecimal netCashFlow, List<CashFlowMonth> months) {}
     public record PersonnelRequest(@NotBlank String code, @NotBlank String name, String description,
                                    @NotBlank String profession, String roleName, SkillLevel skillLevel, Boolean genericResource) {}
     public record EquipmentRequest(@NotBlank String code, @NotBlank String name, String description,
