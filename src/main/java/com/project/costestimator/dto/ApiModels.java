@@ -74,6 +74,16 @@ public final class ApiModels {
     public record WbsCostReport(UUID wbsId, String code, String name, CostBreakdown costs,
                                 List<ActivityCostReport> activities) {}
     public record ActivityCostReport(UUID activityId, String code, String name, CostBreakdown costs) {}
+    public record GeneralUnitPriceRequest(@NotBlank String code, @NotBlank String name,
+                                          @NotNull FuelType fuelType, @NotNull UnitOfMeasure unit,
+                                          @NotNull @PositiveOrZero BigDecimal unitPrice, Boolean active) {}
+    public record GeneralUnitPriceView(UUID id, String code, String name, FuelType fuelType,
+                                      UnitOfMeasure unit, BigDecimal unitPrice,
+                                      String currencyCode, boolean active) {}
+    public record CostCodeRequest(@NotBlank String code, @NotBlank String name,
+                                  @NotNull CostCodeType type, Boolean active) {}
+    public record CostCodeView(UUID id, String code, String name, CostCodeType type, boolean active) {}
+
 
     public record PersonnelRequest(@NotBlank String code, @NotBlank String name, String description,
                                    @NotBlank String profession, String roleName, SkillLevel skillLevel, Boolean genericResource) {}

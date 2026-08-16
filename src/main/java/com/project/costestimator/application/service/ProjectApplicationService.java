@@ -6,11 +6,13 @@ import com.project.costestimator.application.service.support.ProjectCurrencyUpda
 import com.project.costestimator.application.service.support.ProjectFinder;
 import com.project.costestimator.application.service.support.ProjectViewMapper;
 import com.project.costestimator.domain.EstimateVersion;
+import com.project.costestimator.domain.CostCode;
 import com.project.costestimator.domain.Project;
 import com.project.costestimator.domain.Shift;
 import com.project.costestimator.domain.WbsItem;
 import com.project.costestimator.domain.WorkCalendar;
 import com.project.costestimator.domain.enums.EstimateStatus;
+import com.project.costestimator.domain.enums.CostCodeType;
 import com.project.costestimator.domain.enums.ProjectStatus;
 import com.project.costestimator.domain.service.CurrencyConverter;
 import com.project.costestimator.domain.service.DateRangePolicy;
@@ -58,6 +60,7 @@ public final class ProjectApplicationService implements ProjectUseCase {
         Project project = new Project();
         project.setId(UUID.randomUUID());
         apply(project, request);
+        addDefaultCostCodes(project);
         project.setWorkCalendar(defaultCalendar(project));
         projects.save(project);
         return views.toDetail(project);
@@ -162,6 +165,28 @@ public final class ProjectApplicationService implements ProjectUseCase {
         shift.setWorkCalendar(calendar);
         calendar.getShifts().add(shift);
         return calendar;
+    }
+
+    private void addDefaultCostCodes(Project project) {
+        addDefaultCostCode(project, "LAB", "Personnel", CostCodeType.PERSONNEL);
+        addDefaultCostCode(project, "EQP", "Equipment", CostCodeType.EQUIPMENT);
+        addDefaultCostCode(project, "FUEL", "Fuel and energy", CostCodeType.FUEL);
+        addDefaultCostCode(project, "MAT", "Materials", CostCodeType.MATERIAL);
+        addDefaultCostCode(project, "ACC", "Accommodation", CostCodeType.ACCOMMODATION);
+        addDefaultCostCode(project, "TRN", "Transportation and mobilization", CostCodeType.TRANSPORTATION);
+        addDefaultCostCode(project, "OVH", "Overhead", CostCodeType.OVERHEAD);
+        addDefaultCostCode(project, "TAX", "Taxes", CostCodeType.TAX);
+    }
+
+    private void addDefaultCostCode(Project project, String code, String name, CostCodeType type) {
+        CostCode costCode = new CostCode();
+        costCode.setId(UUID.randomUUID());
+        costCode.setCode(code);
+        costCode.setName(name);
+        costCode.setType(type);
+        costCode.setActive(true);
+        costCode.setProject(project);
+        project.getCostCodes().add(costCode);
     }
 
     private void apply(Project project, ProjectRequest request) {

@@ -38,6 +38,8 @@ public final class ProjectCurrencyUpdater {
             estimate.getProjectRates().add(exchangeRate(
                     estimate, sourceCurrency, targetCurrency, conversionRate));
         });
+        project.getGeneralUnitPrices().forEach(price ->
+                price.setUnitPrice(currencies.convert(price.getUnitPrice(), conversionRate)));
     }
 
     private ProjectRate exchangeRate(com.project.costestimator.domain.EstimateVersion estimate,

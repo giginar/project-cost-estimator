@@ -25,5 +25,7 @@ public class Project {
     private BigDecimal eurTryRate;
     private ProjectStatus status;
     private List<EstimateVersion> estimateVersions = new ArrayList<>();
+    private List<GeneralUnitPrice> generalUnitPrices = new ArrayList<>();
+    private List<CostCode> costCodes = new ArrayList<>();
     private WorkCalendar workCalendar;
 }

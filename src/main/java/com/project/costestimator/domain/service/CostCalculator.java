@@ -4,6 +4,7 @@ import com.project.costestimator.domain.*;
 import com.project.costestimator.domain.Resource;
 import com.project.costestimator.domain.enums.CalculationBasis;
 import com.project.costestimator.domain.enums.CostCategory;
+import com.project.costestimator.domain.enums.FuelType;
 import com.project.costestimator.dto.ApiModels.ActivityCostReport;
 import com.project.costestimator.dto.ApiModels.EstimateCostReport;
 import com.project.costestimator.dto.ApiModels.WbsCostReport;
@@ -12,6 +13,8 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Stream;
 
 /**
  * Pure domain calculator. It has no repository or framework dependency and can be tested in isolation.
@@ -146,16 +149,32 @@ public class CostCalculator {
         List<EstimateResourceRate> snapshots = estimate.getResourceRates().stream()
                 .filter(rate -> rate.getResourceId().equals(resource.getId()))
                 .toList();
+        List<ApplicableRate> rates;
         if (!snapshots.isEmpty()) {
-            return snapshots.stream()
+            rates = snapshots.stream()
+                    .map(ApplicableRate::from)
+                    .filter(rate -> rate.isValidOn(effectiveDate))
+                    .toList();
+        } else {
+            rates = resource.getCostComponents().stream()
                     .map(ApplicableRate::from)
                     .filter(rate -> rate.isValidOn(effectiveDate))
                     .toList();
         }
-        return resource.getCostComponents().stream()
+        if (!(resource instanceof EquipmentResource equipment)
+                || rates.stream().anyMatch(rate -> rate.category() == CostCategory.FUEL)) {
+            return rates;
+        }
+
+        Set<FuelType> consumedFuelTypes = equipment.getFuelConsumptions().stream()
+                .map(FuelConsumption::getFuelType)
+                .collect(java.util.stream.Collectors.toSet());
+        List<ApplicableRate> generalFuelRates = estimate.getProject().getGeneralUnitPrices().stream()
+                .filter(GeneralUnitPrice::isActive)
+                .filter(price -> consumedFuelTypes.contains(price.getFuelType()))
                 .map(ApplicableRate::from)
-                .filter(rate -> rate.isValidOn(effectiveDate))
                 .toList();
+        return Stream.concat(rates.stream(), generalFuelRates.stream()).toList();
     }
 
     private BigDecimal componentAmount(ApplicableRate rate, BigDecimal quantity,
@@ -182,10 +201,13 @@ public class CostCalculator {
         BigDecimal standbyHours = isPositive(assignment.getStandbyHoursPerDay())
                 ? days.multiply(assignment.getStandbyHoursPerDay()).multiply(quantity)
                 : BigDecimal.ZERO;
-        BigDecimal operatingConsumption = assignment.getEquipmentResource().getFuelConsumptions().stream()
+        var consumptions = assignment.getEquipmentResource().getFuelConsumptions().stream()
+                .filter(fuel -> rate.fuelType() == null || fuel.getFuelType() == rate.fuelType())
+                .toList();
+        BigDecimal operatingConsumption = consumptions.stream()
                 .map(fuel -> zeroIfNull(fuel.getConsumptionPerHour()))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal standbyConsumption = assignment.getEquipmentResource().getFuelConsumptions().stream()
+        BigDecimal standbyConsumption = consumptions.stream()
                 .map(fuel -> zeroIfNull(fuel.getStandbyConsumptionPerHour()))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal consumed = operatingConsumption.multiply(operatingHours)
@@ -334,18 +356,25 @@ public class CostCalculator {
             boolean taxable,
             BigDecimal taxRate,
             LocalDate validFrom,
-            LocalDate validTo) {
+            LocalDate validTo,
+            FuelType fuelType) {
         private static ApplicableRate from(CostComponent component) {
             return new ApplicableRate(
                     component.getCategory(), component.getCalculationBasis(), component.getUnitPrice(),
                     component.isTaxable(), component.getTaxRate(),
-                    component.getValidFrom(), component.getValidTo());
+                    component.getValidFrom(), component.getValidTo(), null);
         }
 
         private static ApplicableRate from(EstimateResourceRate rate) {
             return new ApplicableRate(
                     rate.getCategory(), rate.getCalculationBasis(), rate.getUnitPrice(),
-                    rate.isTaxable(), rate.getTaxRate(), rate.getValidFrom(), rate.getValidTo());
+                    rate.isTaxable(), rate.getTaxRate(), rate.getValidFrom(), rate.getValidTo(), null);
+        }
+
+        private static ApplicableRate from(GeneralUnitPrice price) {
+            return new ApplicableRate(
+                    CostCategory.FUEL, CalculationBasis.PER_UNIT, price.getUnitPrice(),
+                    false, BigDecimal.ZERO, null, null, price.getFuelType());
         }
 
         private boolean isValidOn(LocalDate date) {

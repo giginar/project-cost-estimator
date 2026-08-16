@@ -136,6 +136,12 @@ public class ApplicationServiceConfig {
     }
 
     @Bean
+    ProjectConfigurationUseCase projectConfigurationUseCase(ProjectRepositoryPort projects,
+                                                             ProjectFinder finder) {
+        return new ProjectConfigurationApplicationService(projects, finder);
+    }
+
+    @Bean
     PricingUseCase pricingUseCase(ProjectRepositoryPort projects,
                                   ProjectFinder finder,
                                   ProjectViewMapper views,
