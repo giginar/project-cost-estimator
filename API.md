@@ -97,9 +97,15 @@ business API operations still enforce their configured bearer-token roles.
 - `PUT /projects/{projectId}/estimates/{estimateId}/resource-rates/{sourceCostComponentId}`
 - `GET /projects/{projectId}/estimates/{estimateId}/cost`
 - `GET /projects/{projectId}/estimates/{estimateId}/cost-report`
+- `GET /projects/{projectId}/estimates/{estimateId}/cash-flow`
 - `GET|POST /projects/{projectId}/estimates/{estimateId}/boq-items`
 - `PUT|DELETE /projects/{projectId}/estimates/{estimateId}/boq-items/{boqId}`
 - `GET /projects/{projectId}/estimates/{estimateId}/boq-traceability`
+- `POST /projects/{projectId}/estimates/{estimateId}/boq-import?preview=false` (`multipart/form-data`)
+- `GET|POST /projects/{projectId}/settings/unit-prices`
+- `PUT|DELETE /projects/{projectId}/settings/unit-prices/{priceId}`
+- `GET|POST /projects/{projectId}/settings/cost-codes`
+- `PUT|DELETE /projects/{projectId}/settings/cost-codes/{costCodeId}`
 - `GET|PUT /projects/{projectId}/calendar`
 - `GET|POST /projects/{projectId}/estimates/{estimateId}/pricing-rules`
 - `PUT|DELETE /projects/{projectId}/estimates/{estimateId}/pricing-rules/{ruleId}`
@@ -112,6 +118,12 @@ The resource referenced by an assignment determines whether it becomes an equipm
 `cost-report` is the authoritative detailed calculation used by the client report and project overview. It returns the estimate total, project-level costs, and matching WBS/activity breakdowns. Every level exposes personnel, equipment, fuel, material, accommodation, transportation, overhead, tax, and total amounts.
 
 BOQ items keep their own unit price and currency and link to a WBS plus an optional activity. Linking synchronizes the activity quantity/unit. Activity planning calculates duration as `ceil(quantity / dailyProductionRate)` and places working dates on the project calendar. Dependencies support finish-to-start, start-to-start, finish-to-finish, start-to-finish and working-day lag with cycle prevention. Shift paid hours determine effective working hours per day. The Angular **BOQ & planning** page manages all of these records and shows BOQ → WBS → activity traceability.
+
+BOQ spreadsheet import reads the first worksheet and expects five columns in this order: `Item No`, `Description`, `Unit`, `Quantity`, and `Row Type`. `HEADER` rows create or reuse WBS items; following `BOQ_ITEM` rows are imported under that WBS with a zero initial unit price in project currency. `preview=true` validates the complete workbook without changing data. Supported unit aliases include `adet/pcs`, `kg`, `ton`, `l/lt`, `m`, `m2/sqm`, and `m3/cbm`. Any validation issue prevents the whole import.
+
+Project Settings manages one general fuel/energy unit price per fuel type. An equipment-specific `FUEL` cost component remains the explicit override; when it is absent, the cost calculator uses the matching active project price. Cost codes provide one configurable code for each report bucket (personnel, equipment, fuel, material, accommodation, transportation, overhead, and tax).
+
+The cash-flow endpoint distributes authoritative activity and project-level costs over planned working months and distributes BOQ income over the linked activity period (or the project period for unlinked BOQ items). It returns monthly income, expense, net and cumulative cash flow together with the active cost-code breakdown. This is a planned cash-flow forecast; it does not represent actual payment dates or posted accounting transactions.
 
 Project currency supports `USD`, `EUR`, and `TRY`. Catalog cost components carry their own `currencyCode` and act as reusable default prices. When a resource is assigned, its rates are copied into the estimate and converted to the project currency using the project's user-defined `usdTryRate` and `eurTryRate`. Project currency changes convert only these estimate snapshots and project additional costs; the shared resource catalog and other projects are not mutated. The rate-sync endpoint adds missing catalog components, while the rate override endpoint changes a price only for the selected estimate. Rates are never fetched or assumed externally.
 
