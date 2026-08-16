@@ -3,6 +3,7 @@ package com.project.costestimator.application.port.in;
 import com.project.costestimator.dto.ApiModels.BoqRequest;
 import com.project.costestimator.dto.ApiModels.BoqTraceabilityReport;
 import com.project.costestimator.dto.ApiModels.BoqView;
+import com.project.costestimator.dto.ApiModels.BoqImportResult;
 
 import java.util.List;
 import java.util.UUID;
@@ -13,4 +14,5 @@ public interface BoqUseCase {
     BoqView updateBoqItem(UUID projectId, UUID estimateId, UUID boqId, BoqRequest request);
     void deleteBoqItem(UUID projectId, UUID estimateId, UUID boqId);
     BoqTraceabilityReport boqTraceability(UUID projectId, UUID estimateId);
+    BoqImportResult importSpreadsheet(UUID projectId, UUID estimateId, byte[] content, boolean preview);
 }

@@ -74,6 +74,7 @@ public final class ApiModels {
     public record WbsCostReport(UUID wbsId, String code, String name, CostBreakdown costs,
                                 List<ActivityCostReport> activities) {}
     public record ActivityCostReport(UUID activityId, String code, String name, CostBreakdown costs) {}
+
     public record GeneralUnitPriceRequest(@NotBlank String code, @NotBlank String name,
                                           @NotNull FuelType fuelType, @NotNull UnitOfMeasure unit,
                                           @NotNull @PositiveOrZero BigDecimal unitPrice, Boolean active) {}
@@ -84,7 +85,6 @@ public final class ApiModels {
                                   @NotNull CostCodeType type, Boolean active) {}
     public record CostCodeView(UUID id, String code, String name, CostCodeType type, boolean active) {}
 
-
     public record CostCodeAmount(UUID costCodeId, String code, String name, CostCodeType type,
                                  BigDecimal amount) {}
     public record CashFlowMonth(String month, BigDecimal income, BigDecimal expense,
@@ -92,6 +92,7 @@ public final class ApiModels {
                                 List<CostCodeAmount> costsByCode) {}
     public record CashFlowReport(BigDecimal totalIncome, BigDecimal totalExpense,
                                  BigDecimal netCashFlow, List<CashFlowMonth> months) {}
+
     public record PersonnelRequest(@NotBlank String code, @NotBlank String name, String description,
                                    @NotBlank String profession, String roleName, SkillLevel skillLevel, Boolean genericResource) {}
     public record EquipmentRequest(@NotBlank String code, @NotBlank String name, String description,
@@ -145,6 +146,9 @@ public final class ApiModels {
                           UUID activityId, String activityCode, String activityName) {}
     public record BoqTraceabilityReport(BigDecimal totalBoqValue, int itemCount, int linkedItemCount,
                                         int unlinkedItemCount, List<BoqView> items) {}
+    public record BoqImportIssue(int rowNumber, String message) {}
+    public record BoqImportResult(boolean preview, int itemCount, int createdWbsCount,
+                                  List<BoqImportIssue> issues) {}
     public record ShiftRequest(@NotBlank String name, @NotNull LocalTime startTime, @NotNull LocalTime endTime,
                                @NotNull @Positive BigDecimal paidHours) {}
     public record ShiftView(UUID id, String name, LocalTime startTime, LocalTime endTime, BigDecimal paidHours) {}

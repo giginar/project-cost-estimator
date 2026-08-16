@@ -7,7 +7,9 @@ import com.project.costestimator.dto.ApiModels.BoqView;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
@@ -55,5 +57,15 @@ public class BoqController {
     public BoqTraceabilityReport traceability(@PathVariable UUID projectId,
                                               @PathVariable UUID estimateId) {
         return boq.boqTraceability(projectId, estimateId);
+    }
+
+    @PostMapping(value = "/{projectId}/estimates/{estimateId}/boq-import",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public com.project.costestimator.dto.ApiModels.BoqImportResult importSpreadsheet(
+            @PathVariable UUID projectId,
+            @PathVariable UUID estimateId,
+            @RequestParam(defaultValue = "false") boolean preview,
+            @RequestPart("file") MultipartFile file) throws java.io.IOException {
+        return boq.importSpreadsheet(projectId, estimateId, file.getBytes(), preview);
     }
 }

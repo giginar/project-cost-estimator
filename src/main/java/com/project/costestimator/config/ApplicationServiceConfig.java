@@ -116,8 +116,9 @@ public class ApplicationServiceConfig {
                           ProjectFinder finder,
                           ProjectViewMapper views,
                           CurrencyConverter currencies,
-                          ActivitySchedulingPolicy scheduling) {
-        return new BoqApplicationService(projects, finder, views, currencies, scheduling);
+                          ActivitySchedulingPolicy scheduling,
+                          BoqSpreadsheetParserPort spreadsheets) {
+        return new BoqApplicationService(projects, finder, views, currencies, scheduling, spreadsheets);
     }
 
     @Bean
