@@ -110,12 +110,17 @@ public final class PricingApplicationService implements PricingUseCase {
 
         BigDecimal salesPrice = runningTotal;
         BigDecimal grossProfit = salesPrice.subtract(estimatedCost);
-        BigDecimal margin = salesPrice.signum() == 0
+        BigDecimal plannedResult = boqValue.subtract(estimatedCost);
+        BigDecimal plannedMargin = boqValue.signum() == 0
+                ? BigDecimal.ZERO
+                : plannedResult.multiply(ONE_HUNDRED).divide(boqValue, 4, RoundingMode.HALF_UP);
+        BigDecimal targetProfitMargin = salesPrice.signum() == 0
                 ? BigDecimal.ZERO
                 : profit.multiply(ONE_HUNDRED).divide(salesPrice, 4, RoundingMode.HALF_UP);
         return new PricingSummaryView(
                 estimatedCost, boqValue, nonProfitAdders, profit, salesPrice, grossProfit,
-                profit, margin, boqValue.subtract(salesPrice), lines);
+                plannedResult, plannedMargin, targetProfitMargin, boqValue.subtract(salesPrice),
+                "BOQ_VALUE", lines);
     }
 
     private void apply(PricingRule rule, PricingRuleRequest request) {

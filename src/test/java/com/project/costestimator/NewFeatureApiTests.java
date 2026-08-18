@@ -68,6 +68,8 @@ class NewFeatureApiTests {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.totalIncome").value(100))
                 .andExpect(jsonPath("$.totalExpense").value(80))
                 .andExpect(jsonPath("$.netCashFlow").value(20))
+                .andExpect(jsonPath("$.revenueBasis").value("BOQ_VALUE"))
+                .andExpect(jsonPath("$.timingBasis").value("PLANNED_ACTIVITY_PERIOD"))
                 .andExpect(jsonPath("$.months[0].costsByCode[?(@.code == 'ENE')].amount").value(80.0));
     }
 

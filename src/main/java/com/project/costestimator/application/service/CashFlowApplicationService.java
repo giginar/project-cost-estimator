@@ -79,7 +79,8 @@ public final class CashFlowApplicationService implements CashFlowQuery {
         BigDecimal totalExpense = views.stream().map(CashFlowMonth::expense)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         return new CashFlowReport(
-                money(totalIncome), money(totalExpense), money(totalIncome.subtract(totalExpense)), views);
+                money(totalIncome), money(totalExpense), money(totalIncome.subtract(totalExpense)),
+                "BOQ_VALUE", "PLANNED_ACTIVITY_PERIOD", views);
     }
 
     private void distributeCost(CostBreakdown cost, LocalDate start, LocalDate end,

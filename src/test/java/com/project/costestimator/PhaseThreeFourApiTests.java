@@ -79,7 +79,19 @@ class PhaseThreeFourApiTests {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.estimatedCost").value(1320))
                 .andExpect(jsonPath("$.nonProfitAdders").value(132)).andExpect(jsonPath("$.profit").value(290.4))
                 .andExpect(jsonPath("$.salesPrice").value(1742.4)).andExpect(jsonPath("$.boqValue").value(1500))
-                .andExpect(jsonPath("$.boqVariance").value(-242.4)).andExpect(jsonPath("$.lines.length()").value(2));
+                .andExpect(jsonPath("$.netProfit").value(180))
+                .andExpect(jsonPath("$.profitMarginPercentage").value(12))
+                .andExpect(jsonPath("$.targetProfitMarginPercentage").value(16.6667))
+                .andExpect(jsonPath("$.boqVariance").value(-242.4))
+                .andExpect(jsonPath("$.revenueBasis").value("BOQ_VALUE"))
+                .andExpect(jsonPath("$.lines.length()").value(2));
+        mvc.perform(get("/api/v1/projects/{p}/estimates/{e}/cash-flow", projectId, estimateId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalIncome").value(1500))
+                .andExpect(jsonPath("$.totalExpense").value(1320))
+                .andExpect(jsonPath("$.netCashFlow").value(180))
+                .andExpect(jsonPath("$.revenueBasis").value("BOQ_VALUE"))
+                .andExpect(jsonPath("$.timingBasis").value("PLANNED_ACTIVITY_PERIOD"));
     }
 
     private String postJson(String path, String json) throws Exception { return mvc.perform(post(path).contentType(MediaType.APPLICATION_JSON).content(json)).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(); }

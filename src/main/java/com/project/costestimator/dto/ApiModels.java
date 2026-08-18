@@ -91,7 +91,8 @@ public final class ApiModels {
                                 BigDecimal netCashFlow, BigDecimal cumulativeCashFlow,
                                 List<CostCodeAmount> costsByCode) {}
     public record CashFlowReport(BigDecimal totalIncome, BigDecimal totalExpense,
-                                 BigDecimal netCashFlow, List<CashFlowMonth> months) {}
+                                 BigDecimal netCashFlow, String revenueBasis,
+                                 String timingBasis, List<CashFlowMonth> months) {}
 
     public record PersonnelRequest(@NotBlank String code, @NotBlank String name, String description,
                                    @NotBlank String profession, String roleName, SkillLevel skillLevel, Boolean genericResource) {}
@@ -167,5 +168,6 @@ public final class ApiModels {
     public record PricingSummaryView(BigDecimal estimatedCost, BigDecimal boqValue, BigDecimal nonProfitAdders,
                                      BigDecimal profit, BigDecimal salesPrice, BigDecimal grossProfit,
                                      BigDecimal netProfit, BigDecimal profitMarginPercentage,
-                                     BigDecimal boqVariance, List<PricingLineView> lines) {}
+                                     BigDecimal targetProfitMarginPercentage, BigDecimal boqVariance,
+                                     String revenueBasis, List<PricingLineView> lines) {}
 }
