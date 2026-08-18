@@ -4,11 +4,20 @@
 </header>
 <section class="pricing-summary">
   <article><small>{{ t('ESTIMATED COST', 'TAHMİNİ MALİYET') }}</small><strong>{{ money(summary()?.estimatedCost) }}</strong></article>
-  <article><small>{{ t('ON-COSTS & RISK', 'EK MALİYET VE RİSK') }}</small><strong>{{ money(summary()?.nonProfitAdders) }}</strong></article>
-  <article><small>{{ t('SALES PRICE', 'SATIŞ FİYATI') }}</small><strong>{{ money(summary()?.salesPrice) }}</strong></article>
-  <article class="profit"><small>{{ t('NET PROFIT', 'NET KÂR') }}</small><strong>{{ money(summary()?.netProfit) }}</strong><span>%{{ summary()?.profitMarginPercentage ?? 0 }}</span></article>
-  <article><small>BOQ</small><strong>{{ money(summary()?.boqValue) }}</strong><span>{{ t('Variance', 'Fark') }}: {{ money(summary()?.boqVariance) }}</span></article>
+  <article><small>{{ t('TARGET SALES PRICE', 'HEDEF SATIŞ FİYATI') }}</small><strong>{{ money(summary()?.salesPrice) }}</strong><span>{{ t('On-costs and risk', 'Ek maliyet ve risk') }}: {{ money(summary()?.nonProfitAdders) }}</span></article>
+  <article class="profit"><small>{{ t('TARGET PROFIT', 'HEDEF KÂR') }}</small><strong>{{ money(summary()?.profit) }}</strong><span>%{{ summary()?.targetProfitMarginPercentage ?? 0 }}</span></article>
+  <article><small>{{ t('BOQ PLANNED REVENUE', 'BOQ PLANLANAN GELİRİ') }}</small><strong>{{ money(summary()?.boqValue) }}</strong><span>{{ t('Target-price gap', 'Hedef fiyat farkı') }}: {{ money(summary()?.boqVariance) }}</span></article>
+  <article class="result" [class.negative]="(summary()?.netProfit ?? 0) < 0"><small>{{ t('PLANNED RESULT', 'PLANLANAN SONUÇ') }}</small><strong>{{ money(summary()?.netProfit) }}</strong><span>%{{ summary()?.profitMarginPercentage ?? 0 }}</span></article>
 </section>
+@if (summary(); as commercial) {
+  <div class="reconciliation" [class.warning]="commercial.boqVariance < 0">
+    @if (commercial.boqVariance < 0) {
+      {{ t('BOQ revenue is below the target sales price. The planned result and cash-flow revenue therefore use the lower BOQ value; target profit has not been secured.', 'BOQ geliri hedef satış fiyatının altında. Bu nedenle planlanan sonuç ve nakit akışı geliri daha düşük olan BOQ değerini kullanır; hedef kâr güvence altına alınmamıştır.') }}
+    } @else {
+      {{ t('BOQ revenue meets or exceeds the target sales price. Planned result and cash flow use this BOQ value.', 'BOQ geliri hedef satış fiyatını karşılıyor veya aşıyor. Planlanan sonuç ve nakit akışı bu BOQ değerini kullanır.') }}
+    }
+  </div>
+}
 <section class="rules">
   <header><span>{{ t('ORDER', 'SIRA') }}</span><span>{{ t('RULE', 'KURAL') }}</span><span>{{ t('TYPE', 'TÜR') }}</span><span>{{ t('BASE', 'MATRAH') }}</span><span>%</span><span>{{ t('AMOUNT', 'TUTAR') }}</span><span></span></header>
   @for (rule of rules(); track rule.id) {

@@ -3,7 +3,10 @@
 .eyebrow { margin: 0 0 7px; color: #16998d; font-size: 10px; font-weight: 800; letter-spacing: .14em; }
 .page-heading h1 { margin: 0 0 7px; color: #183247; font: 700 30px var(--heading-font); }
 .page-heading p { margin: 0; color: #788893; font-size: 13px; }
-.cash-flow-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 14px; }
+.cash-flow-basis { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-bottom: 12px; padding: 11px 14px; border: 1px solid #dce8e7; border-radius: 8px; background: #f4faf9; color: #607681; font-size: 9px; }
+.cash-flow-basis b { color: #294757; }
+.cash-flow-basis .warning { color: #b6544b; }
+.cash-flow-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 14px; }
 .cash-flow-summary article { display: grid; gap: 5px; padding: 15px 17px; border: 1px solid #dfe7eb; border-radius: 8px; background: white; }
 .cash-flow-summary small { color: #91a0aa; font-size: 8px; font-weight: 800; letter-spacing: .08em; }
 .cash-flow-summary strong { color: #168f86; font-size: 17px; }
@@ -20,4 +23,5 @@
 .cost-code-list small { display: flex; gap: 5px; padding: 4px 6px; border-radius: 4px; background: #eef5f5; color: #607481; }
 .cost-code-list code { color: #168f86; font: 800 8px var(--font); }
 .cash-flow-loading { padding: 28px; border: 1px solid #dfe6ea; border-radius: 10px; background: white; color: #788893; text-align: center; }
+@media (max-width: 1000px) { .cash-flow-summary { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 760px) { .cash-flow-summary { grid-template-columns: 1fr; } }

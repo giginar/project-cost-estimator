@@ -65,7 +65,7 @@
     } @else if (currentPage() === 'cost-report') {
       <section class="content"><app-project-report [projectName]="projectName()" [currency]="currencyCode()" [language]="language()" [report]="costReport()" /></section>
     } @else if (currentPage() === 'cash-flow') {
-      <section class="content"><app-project-cash-flow [projectName]="projectName()" [currency]="currencyCode()" [language]="language()" [cashFlow]="cashFlow()" /></section>
+      <section class="content"><app-project-cash-flow [projectName]="projectName()" [currency]="currencyCode()" [language]="language()" [cashFlow]="cashFlow()" [pricing]="pricingSummary()" /></section>
     } @else if (currentPage() === 'settings') {
       <section class="content"><app-project-settings [settings]="settings()" [language]="language()" [saving]="settingsSaving()" [message]="settingsMessage()" [configurationMessage]="configurationMessage()" [generalUnitPrices]="generalUnitPrices()" [costCodes]="costCodes()" [readonly]="!isEngineer()" (settingsSave)="saveSettings($event)" (unitPriceSave)="saveGeneralUnitPrice($event)" (unitPriceDelete)="deleteGeneralUnitPrice($event)" (costCodeSave)="saveCostCode($event)" (costCodeDelete)="deleteCostCode($event)" /></section>
     } @else {

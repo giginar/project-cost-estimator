@@ -2,14 +2,26 @@
   <div>
     <p class="eyebrow">{{ t('PROJECT REPORTS', 'PROJE RAPORLARI') }}</p>
     <h1>{{ t('Planned income and expenses', 'Planlanan gelir ve giderler') }}</h1>
-    <p>{{ projectName() }} · {{ t('BOQ income and calculated costs distributed over planned working periods.', 'BOQ geliri ve hesaplanan maliyetlerin planlanan çalışma dönemlerine dağılımı.') }}</p>
+    <p>{{ projectName() }} · {{ t('BOQ planned revenue and the authoritative cost estimate distributed over activity periods.', 'BOQ planlanan geliri ve güvenilir maliyet tahmininin aktivite dönemlerine dağılımı.') }}</p>
   </div>
 </div>
 
 @if (cashFlow(); as flow) {
-  <div class="cash-flow-summary"><article><small>{{ t('TOTAL INCOME', 'TOPLAM GELİR') }}</small><strong>{{ money(flow.totalIncome) }}</strong></article><article><small>{{ t('TOTAL EXPENSE', 'TOPLAM GİDER') }}</small><strong>{{ money(flow.totalExpense) }}</strong></article><article [class.negative]="flow.netCashFlow < 0"><small>{{ t('NET CASH FLOW', 'NET NAKİT AKIŞI') }}</small><strong>{{ money(flow.netCashFlow) }}</strong></article></div>
+  <div class="cash-flow-basis">
+    <span><b>{{ t('Revenue basis', 'Gelir dayanağı') }}:</b> {{ t('BOQ planned contract value', 'BOQ planlanan sözleşme değeri') }}</span>
+    <span><b>{{ t('Timing basis', 'Zamanlama dayanağı') }}:</b> {{ t('Planned activity periods', 'Planlanan aktivite dönemleri') }}</span>
+    @if (pricing(); as commercial) {
+      <span [class.warning]="commercial.boqVariance < 0"><b>{{ t('BOQ / target-price gap', 'BOQ / hedef fiyat farkı') }}:</b> {{ money(commercial.boqVariance) }}</span>
+    }
+  </div>
+  <div class="cash-flow-summary">
+    <article><small>{{ t('BOQ PLANNED REVENUE', 'BOQ PLANLANAN GELİRİ') }}</small><strong>{{ money(flow.totalIncome) }}</strong></article>
+    <article><small>{{ t('TARGET SALES PRICE', 'HEDEF SATIŞ FİYATI') }}</small><strong>{{ money(pricing()?.salesPrice ?? flow.totalIncome) }}</strong></article>
+    <article><small>{{ t('ESTIMATED COST', 'TAHMİNİ MALİYET') }}</small><strong>{{ money(flow.totalExpense) }}</strong></article>
+    <article [class.negative]="flow.netCashFlow < 0"><small>{{ t('PLANNED BALANCE', 'PLANLANAN BAKİYE') }}</small><strong>{{ money(flow.netCashFlow) }}</strong></article>
+  </div>
   <section class="cash-flow-card">
-    <div class="cash-flow-row head"><span>{{ t('MONTH', 'AY') }}</span><span>{{ t('INCOME', 'GELİR') }}</span><span>{{ t('EXPENSE', 'GİDER') }}</span><span>{{ t('NET', 'NET') }}</span><span>{{ t('CUMULATIVE', 'KÜMÜLATİF') }}</span><span>{{ t('COST CODES', 'MALİYET KODLARI') }}</span></div>
+    <div class="cash-flow-row head"><span>{{ t('MONTH', 'AY') }}</span><span>{{ t('BOQ REVENUE', 'BOQ GELİRİ') }}</span><span>{{ t('ESTIMATED COST', 'TAHMİNİ MALİYET') }}</span><span>{{ t('BALANCE', 'BAKİYE') }}</span><span>{{ t('CUMULATIVE', 'KÜMÜLATİF') }}</span><span>{{ t('COST CODES', 'MALİYET KODLARI') }}</span></div>
     @for (month of flow.months; track month.month) { <div class="cash-flow-row"><strong>{{ monthLabel(month.month) }}</strong><span class="flow-value income"><i [style.width.%]="barWidth(month.income)"></i><b>{{ money(month.income) }}</b></span><span class="flow-value expense"><i [style.width.%]="barWidth(month.expense)"></i><b>{{ money(month.expense) }}</b></span><b [class.negative-text]="month.netCashFlow < 0">{{ money(month.netCashFlow) }}</b><b [class.negative-text]="month.cumulativeCashFlow < 0">{{ money(month.cumulativeCashFlow) }}</b><span class="cost-code-list">@for (code of month.costsByCode; track code.costCodeId) { <small><code>{{ code.code }}</code>{{ money(code.amount) }}</small> }</span></div> }
   </section>
 } @else {

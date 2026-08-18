@@ -29,7 +29,7 @@ export interface CostCode { id: string; code: string; name: string; type: CostCo
 export interface CostCodeDraft { id: string | null; code: string; name: string; type: CostCodeType; active: boolean; }
 export interface CostCodeAmount { costCodeId: string; code: string; name: string; type: CostCodeType; amount: number; }
 export interface CashFlowMonth { month: string; income: number; expense: number; netCashFlow: number; cumulativeCashFlow: number; costsByCode: CostCodeAmount[]; }
-export interface CashFlowReport { totalIncome: number; totalExpense: number; netCashFlow: number; months: CashFlowMonth[]; }
+export interface CashFlowReport { totalIncome: number; totalExpense: number; netCashFlow: number; revenueBasis: 'BOQ_VALUE'; timingBasis: 'PLANNED_ACTIVITY_PERIOD'; months: CashFlowMonth[]; }
 export interface EstimateResourceRate { id: string; resourceId: string; sourceCostComponentId: string; category: string; name: string; calculationBasis: string; unitPrice: number; unit: string | null; taxable: boolean; taxRate: number; validFrom: string | null; validTo: string | null; }
 export interface BoqItem { id: string; code: string; description: string; unit: string; quantity: number; unitPrice: number; currencyCode: string; totalPrice: number; wbsId: string; wbsCode: string; wbsName: string; activityId: string | null; activityCode: string | null; activityName: string | null; }
 export interface BoqDraft { id: string | null; code: string; description: string; unit: string; quantity: number; unitPrice: number; currencyCode: string; wbsId: string; activityId: string | null; }
@@ -45,7 +45,7 @@ export type PricingBase = 'ESTIMATED_COST' | 'RUNNING_TOTAL';
 export interface PricingRuleDraft { id: string | null; type: PricingRuleType; name: string; percentage: number; base: PricingBase; sequence: number; active: boolean; }
 export interface PricingRule extends Omit<PricingRuleDraft, 'id'> { id: string; }
 export interface PricingLine extends PricingRule { ruleId: string; baseAmount: number; amount: number; }
-export interface PricingSummary { estimatedCost: number; boqValue: number; nonProfitAdders: number; profit: number; salesPrice: number; grossProfit: number; netProfit: number; profitMarginPercentage: number; boqVariance: number; lines: PricingLine[]; }
+export interface PricingSummary { estimatedCost: number; boqValue: number; nonProfitAdders: number; profit: number; salesPrice: number; grossProfit: number; netProfit: number; profitMarginPercentage: number; targetProfitMarginPercentage: number; boqVariance: number; revenueBasis: 'BOQ_VALUE'; lines: PricingLine[]; }
 
 @Injectable({ providedIn: 'root' })
 export class ProjectApiService {

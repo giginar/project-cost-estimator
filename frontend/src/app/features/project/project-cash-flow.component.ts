@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
-import { CashFlowReport } from '../../core/project-api.service';
+import { CashFlowReport, PricingSummary } from '../../core/project-api.service';
 
 @Component({
   selector: 'app-project-cash-flow',
@@ -12,6 +12,7 @@ export class ProjectCashFlowComponent {
   readonly currency = input('USD');
   readonly language = input<'en' | 'tr'>('en');
   readonly cashFlow = input<CashFlowReport | null>(null);
+  readonly pricing = input<PricingSummary | null>(null);
 
   protected money(value: number): string { return new Intl.NumberFormat(this.language() === 'tr' ? 'tr-TR' : 'en-US', { style: 'currency', currency: this.currency(), maximumFractionDigits: 0 }).format(value); }
   protected monthLabel(value: string): string { return new Date(`${value}-01T00:00:00`).toLocaleDateString(this.language() === 'tr' ? 'tr-TR' : 'en-US', { month: 'short', year: 'numeric' }); }
