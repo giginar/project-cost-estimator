@@ -123,14 +123,39 @@ $env:DEMO_DATA_ENABLED='false'
    planını, bağımlılıkları ve vardiyaları yönetin.
 5. **Cost library** sayfasında maliyet bileşenlerini, tahmine kopyalanmış
    fiyatları, ekipman ekonomisini ve malzeme tedarik bilgisini inceleyin.
-6. **Pricing & profit** sayfasında ek fiyatlandırma kurallarını ve satış fiyatını yönetin.
-7. **Reports** sayfasında detaylı maliyet kırılımı ile aylık gelir, gider, net ve
-   kümülatif nakit akışını karşılaştırın.
+6. **Pricing & profit** sayfasında ek fiyatlandırma kurallarını, hedef satış
+   fiyatını, hedef kârı ve BOQ bazlı planlanan sonucu karşılaştırın.
+7. **Reports > Cost breakdown** sayfasında detaylı maliyet kırılımını inceleyin.
+8. **Reports > Cash flow** sayfasında BOQ planlanan geliri, tahmini maliyet,
+   aylık bakiye ve kümülatif bakiyeyi karşılaştırın.
 
 Kaynak maliyetleri aktiviteye ilk atamada tahmin fiyatı olarak kopyalanır. Kaynak
 kataloğundaki fiyatı sonradan değiştirmek mevcut tahmin fiyatını otomatik olarak
 değiştirmez; **Cost library** içinden senkronizasyon yapılmalıdır. Bu davranış
 geçmiş tahminlerin fiyat bazını korur.
+
+## Fiyatlandırma ve nakit akışı ilişkisi
+
+Uygulama ticari hedef ile mevcut gelir planını birbirinden ayırır:
+
+- **Hedef satış fiyatı**, tahmini maliyete sıralı genel gider, risk, beklenmeyen
+  gider, teminat, finansman, vergi ve kâr kurallarının eklenmesiyle oluşur.
+- **Hedef kâr**, `PROFIT` türündeki fiyatlandırma kurallarının toplamıdır ve ancak
+  hedef satış fiyatı sözleşme/BOQ değeriyle güvence altına alındığında ticari
+  hedefi ifade eder.
+- **BOQ planlanan geliri**, BOQ miktar × birim fiyat toplamıdır ve cash flow'un
+  gelir dayanağıdır.
+- **Planlanan sonuç**, BOQ planlanan geliri eksi tahmini maliyettir. Pricing
+  ekranındaki planlanan sonuç ile cash flow toplam bakiyesi aynı temele dayanır.
+- **BOQ / hedef fiyat farkı**, mevcut BOQ gelirinin hedef satış fiyatını ne kadar
+  karşıladığını gösterir. Negatif fark, hedef kârın henüz güvence altında
+  olmadığını belirtir.
+
+Aylık cash flow bir planlama baz çizgisidir: BOQ geliri ve hesaplanan maliyetler
+bağlı oldukları aktivitenin planlanan çalışma dönemlerine dağıtılır. Fatura tarihi,
+hakediş onayı, tahsilat gecikmesi, avans ve teminat kesintisi gibi gerçek ödeme
+koşulları mevcut modelde bulunmadığı için rapor gerçekleşen banka nakit hareketi
+olarak yorumlanmamalıdır.
 
 ## BOQ Excel içe aktarma
 
