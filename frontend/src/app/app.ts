@@ -4,6 +4,7 @@ import { GanttComponent } from './features/gantt/gantt.component';
 import { ActivityResource, GanttTask, NewResource, ResourceSelection, ResourceType } from './features/gantt/gantt.models';
 import { ResourceCatalogComponent } from './features/resources/resource-catalog.component';
 import { ProjectOverviewComponent } from './features/project/project-overview.component';
+import { ProjectCashFlowComponent } from './features/project/project-cash-flow.component';
 import { ProjectReportComponent } from './features/project/project-report.component';
 import { CostLibraryComponent } from './features/cost-library/cost-library.component';
 import { ProjectSettingsComponent } from './features/settings/project-settings.component';
@@ -17,7 +18,7 @@ import { ActivityPlanningDraft, BoqDraft, BoqImportResult, BoqTraceabilityReport
 
 @Component({
   selector: 'app-root',
-  imports: [GanttComponent, ResourceCatalogComponent, ProjectOverviewComponent, ProjectReportComponent, CostLibraryComponent, ProjectSettingsComponent, PlanningComponent, PricingComponent, AuthComponent, UserAdminComponent],
+  imports: [GanttComponent, ResourceCatalogComponent, ProjectOverviewComponent, ProjectCashFlowComponent, ProjectReportComponent, CostLibraryComponent, ProjectSettingsComponent, PlanningComponent, PricingComponent, AuthComponent, UserAdminComponent],
   templateUrl: './app.html',
   styleUrls: ['./app.scss', './app-extra.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -27,7 +28,7 @@ export class App implements OnInit {
   protected readonly auth = inject(AuthService);
   protected scheduleContext: ScheduleData | null = null;
   protected readonly sidebarCollapsed = signal(false);
-  protected readonly currentPage = signal<'overview' | 'schedule' | 'planning' | 'cost-library' | 'pricing' | 'report' | 'settings' | ResourceType>('schedule');
+  protected readonly currentPage = signal<'overview' | 'schedule' | 'planning' | 'cost-library' | 'pricing' | 'cost-report' | 'cash-flow' | 'settings' | ResourceType>('schedule');
   protected readonly projects = signal<ProjectOption[]>([]);
   protected readonly projectMenuOpen = signal(false);
   protected readonly newProjectDialogOpen = signal(false);

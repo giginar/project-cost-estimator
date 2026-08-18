@@ -18,7 +18,7 @@
         <a [class.active]="currentPage() === 'cost-library'" (click)="currentPage.set('cost-library')"><span class="nav-icon">◫</span><span>{{ t('Cost library', 'Maliyet Kütüphanesi') }}</span></a>
       }
       <a [class.active]="currentPage() === 'pricing'" (click)="currentPage.set('pricing')"><span class="nav-icon">%</span><span>{{ t('Pricing & profit', 'Fiyatlandırma ve Kâr') }}</span></a>
-      <a [class.active]="currentPage() === 'report'" (click)="currentPage.set('report')"><span class="nav-icon">↗</span><span>{{ t('Reports', 'Raporlar') }}</span></a>
+      <div class="nav-group"><span class="nav-group-title"><span class="nav-icon">↗</span><b>{{ t('Reports', 'Raporlar') }}</b></span><a class="nav-child" [class.active]="currentPage() === 'cost-report'" (click)="currentPage.set('cost-report')"><span>{{ t('Cost breakdown', 'Maliyet kırılımı') }}</span></a><a class="nav-child" [class.active]="currentPage() === 'cash-flow'" (click)="currentPage.set('cash-flow')"><span>{{ t('Cash flow', 'Nakit akışı') }}</span></a></div>
     </nav>
     <div class="sidebar-footer">
       <a [class.active]="currentPage() === 'settings'" (click)="currentPage.set('settings')"><span class="nav-icon">⚙</span><span>{{ t('Project settings', 'Proje Ayarları') }}</span></a>
@@ -62,8 +62,10 @@
       <section class="content"><app-cost-library [resources]="resources()" [projectRates]="projectRates()" [projectCost]="costReport()?.total?.totalCost ?? null" [currency]="currencyCode()" [language]="language()" (costSave)="saveCost($event)" (projectRateSync)="syncProjectRates($event)" (projectRateUpdate)="updateProjectRate($event)" (equipmentEconomicsSave)="saveEquipmentEconomics($event)" (materialProcurementSave)="saveMaterialProcurement($event)" /></section>
     } @else if (currentPage() === 'pricing') {
       <section class="content"><app-pricing [rules]="pricingRules()" [summary]="pricingSummary()" [currency]="currencyCode()" [language]="language()" [readonly]="!isEngineer()" (ruleSave)="savePricingRule($event)" (ruleDelete)="deletePricingRule($event)" /></section>
-    } @else if (currentPage() === 'report') {
-      <section class="content"><app-project-report [projectName]="projectName()" [currency]="currencyCode()" [language]="language()" [report]="costReport()" [cashFlow]="cashFlow()" /></section>
+    } @else if (currentPage() === 'cost-report') {
+      <section class="content"><app-project-report [projectName]="projectName()" [currency]="currencyCode()" [language]="language()" [report]="costReport()" /></section>
+    } @else if (currentPage() === 'cash-flow') {
+      <section class="content"><app-project-cash-flow [projectName]="projectName()" [currency]="currencyCode()" [language]="language()" [cashFlow]="cashFlow()" /></section>
     } @else if (currentPage() === 'settings') {
       <section class="content"><app-project-settings [settings]="settings()" [language]="language()" [saving]="settingsSaving()" [message]="settingsMessage()" [configurationMessage]="configurationMessage()" [generalUnitPrices]="generalUnitPrices()" [costCodes]="costCodes()" [readonly]="!isEngineer()" (settingsSave)="saveSettings($event)" (unitPriceSave)="saveGeneralUnitPrice($event)" (unitPriceDelete)="deleteGeneralUnitPrice($event)" (costCodeSave)="saveCostCode($event)" (costCodeDelete)="deleteCostCode($event)" /></section>
     } @else {

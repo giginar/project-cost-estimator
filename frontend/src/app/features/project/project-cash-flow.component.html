@@ -1,0 +1,17 @@
+<div class="page-heading">
+  <div>
+    <p class="eyebrow">{{ t('PROJECT REPORTS', 'PROJE RAPORLARI') }}</p>
+    <h1>{{ t('Planned income and expenses', 'Planlanan gelir ve giderler') }}</h1>
+    <p>{{ projectName() }} · {{ t('BOQ income and calculated costs distributed over planned working periods.', 'BOQ geliri ve hesaplanan maliyetlerin planlanan çalışma dönemlerine dağılımı.') }}</p>
+  </div>
+</div>
+
+@if (cashFlow(); as flow) {
+  <div class="cash-flow-summary"><article><small>{{ t('TOTAL INCOME', 'TOPLAM GELİR') }}</small><strong>{{ money(flow.totalIncome) }}</strong></article><article><small>{{ t('TOTAL EXPENSE', 'TOPLAM GİDER') }}</small><strong>{{ money(flow.totalExpense) }}</strong></article><article [class.negative]="flow.netCashFlow < 0"><small>{{ t('NET CASH FLOW', 'NET NAKİT AKIŞI') }}</small><strong>{{ money(flow.netCashFlow) }}</strong></article></div>
+  <section class="cash-flow-card">
+    <div class="cash-flow-row head"><span>{{ t('MONTH', 'AY') }}</span><span>{{ t('INCOME', 'GELİR') }}</span><span>{{ t('EXPENSE', 'GİDER') }}</span><span>{{ t('NET', 'NET') }}</span><span>{{ t('CUMULATIVE', 'KÜMÜLATİF') }}</span><span>{{ t('COST CODES', 'MALİYET KODLARI') }}</span></div>
+    @for (month of flow.months; track month.month) { <div class="cash-flow-row"><strong>{{ monthLabel(month.month) }}</strong><span class="flow-value income"><i [style.width.%]="barWidth(month.income)"></i><b>{{ money(month.income) }}</b></span><span class="flow-value expense"><i [style.width.%]="barWidth(month.expense)"></i><b>{{ money(month.expense) }}</b></span><b [class.negative-text]="month.netCashFlow < 0">{{ money(month.netCashFlow) }}</b><b [class.negative-text]="month.cumulativeCashFlow < 0">{{ money(month.cumulativeCashFlow) }}</b><span class="cost-code-list">@for (code of month.costsByCode; track code.costCodeId) { <small><code>{{ code.code }}</code>{{ money(code.amount) }}</small> }</span></div> }
+  </section>
+} @else {
+  <div class="cash-flow-loading">{{ t('Cash-flow report is being calculated…', 'Nakit akışı raporu hesaplanıyor…') }}</div>
+}
